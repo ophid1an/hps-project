@@ -22,8 +22,7 @@ int main(int argc, char* argv[])
 
     const size_t n = 1 << p;
 
-    uint32_t* arr;
-    arr = malloc(n * sizeof(arr));
+    uint32_t *arr = malloc(sizeof *arr * n);
 
     srand(seed);
     // Fill arr with random values from 0..
