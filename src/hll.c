@@ -1,8 +1,8 @@
 #include <limits.h>
 #include <math.h>
 
-#include "hll.h"
 #include "hashing.h"
+#include "hll.h"
 
 double hll(uint32_t* arr, size_t n, uint8_t b)
 {
@@ -28,8 +28,8 @@ double hll(uint32_t* arr, size_t n, uint8_t b)
         uint32_t hashed = hash_func1(arr[i]);
         uint16_t reg_id = hashed >> (32 - b);
         uint32_t w = hashed & (0xFFFFFFFF >> b);
-        uint8_t lz = find_leftmost_one_position(w, b);
-        registers[reg_id] = lz > registers[reg_id] ? lz : registers[reg_id];
+        uint8_t lm_one_pos = find_leftmost_one_position(w, b);
+        registers[reg_id] = lm_one_pos > registers[reg_id] ? lm_one_pos : registers[reg_id];
     }
 
     uint16_t zero_registers_card = m;
