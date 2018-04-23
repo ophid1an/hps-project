@@ -4,6 +4,8 @@
 #include "hashing.h"
 #include "hll.h"
 
+static uint8_t find_leftmost_one_position(uint32_t a, uint8_t offset);
+
 double hll(uint32_t* arr, size_t n, uint8_t b)
 {
     uint16_t m = 1 << b;
