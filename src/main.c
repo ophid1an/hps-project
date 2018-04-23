@@ -33,7 +33,7 @@ int main(void)
     // sort(arr, n);
     // printf("Array sorted!\n");
 
-    // Print distinct elements number of sorted array
+    // Print distinct elements number of array
     // size_t cnt = count_sorted_array_distinct(arr, n);
     size_t cnt = cnts[p - 4];
     printf("Number of distinct elements: %zu\n", cnt);
