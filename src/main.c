@@ -5,10 +5,19 @@
 
 #include "hll.h"
 
-int main(void)
+int main(int argc, char* argv[])
 {
-    static const uint8_t p = 27;
-    static const uint8_t b = 14; // b -> [4..16]
+    static uint8_t p = 27;
+    static uint8_t b = 14; // b -> [4..16]
+
+    if (argc >= 2) {
+        p = (uint8_t)strtoul(argv[1], NULL, 10);
+    }
+
+    if (argc >= 3) {
+        b = (uint8_t)strtoul(argv[2], NULL, 10);
+    }
+
     static const unsigned seed = 1;
 
     const size_t n = 1 << p;
