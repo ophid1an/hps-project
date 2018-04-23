@@ -1,9 +1,5 @@
 #include "hashing.h"
 
-
-
-// Hash functions
-
 uint32_t hash_func1(uint32_t a)
 {
     a = (a ^ 61) ^ (a >> 16);
