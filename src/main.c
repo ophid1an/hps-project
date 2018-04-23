@@ -4,7 +4,6 @@
 #include <stdlib.h>
 
 #include "hll.h"
-#include "sorting.h"
 
 int main(void)
 {
@@ -25,7 +24,6 @@ int main(void)
     printf("Array of length %d filled with [0 .. %d]!\n", n, mask);
 
     // Distinct counts for p [4..30], seed = 1, mask = 1 * n + (n - 1)
-    const size_t cnts_length = 27;
     size_t cnts[] = { 14, 25, 50, 104, 206, 394, 800, 1609, 3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900, 1650602, 3300462, 6601586, 13202252, 26403875, 52807680, 105621810, 211235547, 422476956, 844963071 };
 
     // Print distinct elements number of array
