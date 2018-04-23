@@ -42,29 +42,15 @@ double hll(uint32_t* arr, size_t n, uint8_t b)
 
     double raw_estimate = a * m * m / sum_of_inverses;
 
-    // uint32_t lz_cnt = 0;
-    // for (size_t i = 0; i < m; ++i) {
-    //     lz_cnt += registers[i];
-    // }
-
-    // printf("Value of m: %u\n", m);
-    // printf("Value of a: %f\n", a);
-    // printf("Registers sum: %u\n", lz_cnt);
-    // printf("Sum of inverses: %f\n", sum_of_inverses);
-    // printf("Raw estimate: %f\n", raw_estimate);
-
     if (raw_estimate <= 2.5 * m) {
-        // printf("E*<=2.5*mod*m , %u\n", zero_registers_card);
         if (zero_registers_card) {
             return m * log((double)m / zero_registers_card);
         } else {
             return raw_estimate;
         }
     } else if (raw_estimate <= UINT32_MAX / 30.0) {
-        // printf("E*<=2^32*(1/30)\n");
         return raw_estimate;
     } else {
-        // printf("E*>2^32*(1/30)\n");
         return -(UINT32_MAX * log(1 - raw_estimate / UINT32_MAX));
     }
 }
