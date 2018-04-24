@@ -8,7 +8,7 @@ static uint8_t find_leftmost_one_position(uint32_t a, uint8_t offset);
 
 double hll(uint32_t* arr, size_t n, uint8_t b)
 {
-    uint16_t m = 1 << b;
+    uint32_t m = 1UL << b;
     uint8_t registers[m];
     for (size_t i = 0; i < m; ++i) {
         registers[i] = 0;
@@ -17,7 +17,7 @@ double hll(uint32_t* arr, size_t n, uint8_t b)
     double a = 0.0;
 
     if (m >= 128) {
-        a = 0.7213 / (1 + 1.079 / m);
+        a = 0.7213 / (1.0 + 1.079 / m);
     } else if (m == 64) {
         a = 0.709;
     } else if (m == 32) {
@@ -28,13 +28,13 @@ double hll(uint32_t* arr, size_t n, uint8_t b)
 
     for (size_t i = 0; i < n; ++i) {
         uint32_t hashed = hash_func1(arr[i]);
-        uint16_t reg_id = hashed >> (32 - b);
-        uint32_t w = hashed & (0xFFFFFFFF >> b);
+        uint16_t reg_id = hashed >> (sizeof hashed * CHAR_BIT - b);
+        uint32_t w = hashed & (UINT32_MAX >> b);
         uint8_t lm_one_pos = find_leftmost_one_position(w, b);
         registers[reg_id] = lm_one_pos > registers[reg_id] ? lm_one_pos : registers[reg_id];
     }
 
-    uint16_t zero_registers_card = m;
+    uint32_t zero_registers_card = m;
     double sum_of_inverses = 0.0;
     for (size_t i = 0; i < m; i++) {
         if (registers[i] != 0)
@@ -53,7 +53,7 @@ double hll(uint32_t* arr, size_t n, uint8_t b)
     } else if (raw_estimate <= UINT32_MAX / 30.0) {
         return raw_estimate;
     } else {
-        return -(UINT32_MAX * log(1 - raw_estimate / UINT32_MAX));
+        return -(UINT32_MAX * log(1.0 - raw_estimate / UINT32_MAX));
     }
 }
 
