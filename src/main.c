@@ -12,11 +12,11 @@ int main(int argc, char* argv[])
     static uint8_t b = 14; // b -> [4..16]
 
     if (argc >= 2) {
-        p = (uint8_t)strtoul(argv[1], NULL, 10);
+        p = strtoul(argv[1], NULL, 10);
     }
 
     if (argc >= 3) {
-        b = (uint8_t)strtoul(argv[2], NULL, 10);
+        b = strtoul(argv[2], NULL, 10);
     }
 
     static const unsigned seed = 1;
