@@ -8,8 +8,8 @@
 
 int main(int argc, char* argv[])
 {
-    static uint8_t p = 27;
-    static uint8_t b = 14; // b -> [4..16]
+    static uint8_t p = 27; // Cardinality of elements 2^p , p -> [4..30]
+    static uint8_t b = 14; // Cardinality of registers 2^b , b -> [4..16]
 
     if (argc >= 2) {
         p = strtoul(argv[1], NULL, 10);
@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
     }
     printf("Array of length %zu filled with [0 .. %u]!\n", n, mask);
 
-    // Distinct counts for p [4..30], seed = 1, mask = 1 * n + (n - 1)
+    // Distinct counts for p [4..30], seed = 1, mask = 1UL * n + (n - 1UL)
     uint32_t cnts[] = { 14, 25, 50, 104, 206, 394, 800, 1609, 3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900, 1650602, 3300462, 6601586, 13202252, 26403875, 52807680, 105621810, 211235547, 422476956, 844963071 };
 
     // Print distinct elements number of array
