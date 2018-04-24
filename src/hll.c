@@ -1,5 +1,6 @@
 #include <limits.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "hashing.h"
 #include "hll.h"
@@ -9,7 +10,7 @@ static uint8_t find_leftmost_one_position(uint32_t a, uint8_t offset);
 double hll(uint32_t* arr, size_t n, uint8_t b)
 {
     uint32_t m = 1UL << b;
-    uint8_t registers[m];
+    uint8_t *registers = malloc(sizeof *registers * m);
     for (size_t i = 0; i < m; ++i) {
         registers[i] = 0;
     }
@@ -41,6 +42,8 @@ double hll(uint32_t* arr, size_t n, uint8_t b)
             --zero_registers_card;
         sum_of_inverses += 1 / pow(2.0, registers[i]);
     }
+
+    free(registers);
 
     double raw_estimate = a * m * m / sum_of_inverses;
 
