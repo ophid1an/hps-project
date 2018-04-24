@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "hll.h"
 
@@ -42,11 +43,19 @@ int main(int argc, char* argv[])
 
     // Find approximation of distinct items with HyperLogLog
     printf("\nHyperLogLog\n\n");
+
+    clock_t begin = clock();
+
     double estimate = hll(arr, n, b);
+    
+    clock_t end = clock();
+    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+    
 
     printf("Estimate: %f\n", estimate);
     double error = (estimate - cnt) * 100 / cnt;
     printf("Error %% : %.3f\n", error);
+    printf("Time spent: %.3f\n", time_spent);
 
     free(arr);
 
