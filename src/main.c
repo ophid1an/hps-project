@@ -21,13 +21,13 @@ int main(int argc, char* argv[])
 
     static const unsigned seed = 1;
 
-    const size_t n = 1 << p;
+    const size_t n = 1UL << p;
 
     uint32_t *arr = malloc(sizeof *arr * n);
 
     srand(seed);
     // Fill arr with random values from 0..
-    uint32_t mask = 1 * n + (n - 1);
+    uint32_t mask = 1UL * n + (n - 1UL);
     for (size_t i = 0; i < n; ++i) {
         arr[i] = rand() & mask;
     }
@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
     uint32_t cnts[] = { 14, 25, 50, 104, 206, 394, 800, 1609, 3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900, 1650602, 3300462, 6601586, 13202252, 26403875, 52807680, 105621810, 211235547, 422476956, 844963071 };
 
     // Print distinct elements number of array
-    uint32_t cnt = cnts[p - 4];
+    uint32_t cnt = cnts[p - 4U];
     printf("Number of distinct elements: %u\n", cnt);
     printf("Ratio %% : %.3f\n", cnt * 100.0 / n);
 
