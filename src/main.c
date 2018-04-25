@@ -5,8 +5,11 @@
 #include <time.h>
 
 #include "hll.h"
+#include "hllpp.h"
 
-int main(int argc, char* argv[])
+#define ABS(x) ((x)<0 ? -(x) : (x))
+
+int main(int argc, char *argv[])
 {
     static uint8_t p = 27; // Cardinality of elements 2^p , p -> [4..30]
     static uint8_t b = 14; // Cardinality of registers 2^b , b -> [4..16]
@@ -47,14 +50,28 @@ int main(int argc, char* argv[])
     clock_t begin = clock();
 
     double estimate = hll(arr, n, b);
-    
+
     clock_t end = clock();
     double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    
 
     printf("Estimate: %f\n", estimate);
     double error = (estimate - cnt) * 100 / cnt;
-    printf("Error %% : %.3f\n", error);
+    printf("Absolute error %% : %.3f\n", ABS(error));
+    printf("Time spent: %.3f\n", time_spent);
+
+    // Find approximation of distinct items with HyperLogLog++
+    printf("\nHyperLogLog++\n\n");
+
+    begin = clock();
+
+    estimate = hllpp(arr, n, b);
+
+    end = clock();
+    time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+
+    printf("Estimate: %f\n", estimate);
+    error = (estimate - cnt) * 100 / cnt;
+    printf("Absolute Error %% : %.3f\n", ABS(error));
     printf("Time spent: %.3f\n", time_spent);
 
     free(arr);
