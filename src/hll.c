@@ -7,7 +7,7 @@
 
 static uint8_t find_leftmost_one_position(uint32_t a, uint8_t offset);
 
-double hll(uint32_t* arr, size_t n, uint8_t b)
+double hll(uint32_t *arr, size_t n, uint8_t b)
 {
     uint32_t m = 1UL << b;
     uint8_t *registers = malloc(sizeof *registers * m);
@@ -27,9 +27,11 @@ double hll(uint32_t* arr, size_t n, uint8_t b)
         a = 0.673;
     }
 
+    size_t hash_mask = sizeof(uint32_t) * CHAR_BIT - b;
+
     for (size_t i = 0; i < n; ++i) {
         uint32_t hashed = hash_func1(arr[i]);
-        uint16_t reg_id = hashed >> (sizeof hashed * CHAR_BIT - b);
+        uint16_t reg_id = hashed >> hash_mask;
         uint32_t w = hashed & (UINT32_MAX >> b);
         uint8_t lm_one_pos = find_leftmost_one_position(w, b);
         registers[reg_id] = lm_one_pos > registers[reg_id] ? lm_one_pos : registers[reg_id];
