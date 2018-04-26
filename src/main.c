@@ -14,7 +14,7 @@ static void print_results(struct result res);
 
 struct result {
     double estimate;
-    double abs_error;
+    double perc_error;
     double time_spent;
 };
 
@@ -83,17 +83,17 @@ static struct result calc(double (*ptf)(uint32_t *, size_t, uint8_t), uint32_t *
         clock_t end = clock();
 
         res.time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-        res.abs_error = ABS((res.estimate - cnt) * 100 / cnt);
+        res.perc_error = ABS((cnt - res.estimate) * 100 / cnt);
     } else {
         res.estimate = (*ptf)(arr, n, b);
-        res.abs_error = ABS((res.estimate - cnt) * 100 / cnt);
+        res.perc_error = ABS((cnt - res.estimate) * 100 / cnt);
     }
     return res;
 }
 
 static void print_results(struct result res) {
     printf("Estimate: %f\n", res.estimate);
-    printf("Absolute error %% : %.3f\n", res.abs_error);
+    printf("Percent error: %.3f\n", res.perc_error);
     if (res.time_spent >= 0)
         printf("Time spent: %.3f\n", res.time_spent);
 }
