@@ -56,18 +56,15 @@ int main(int argc, char *argv[])
     printf("Number of distinct elements: %u\n", cnt);
     printf("Ratio %% : %.3f\n", cnt * 100.0 / n);
 
-    struct result res;
     // Find approximation of distinct items with HyperLogLog
     printf("\nHyperLogLog\n\n");
 
-    res = calc(hll, arr, n, b, measure_time, cnt);
-    print_results(res);
+    print_results(calc(hll, arr, n, b, measure_time, cnt));
 
     // Find approximation of distinct items with HyperLogLog++
     printf("\nHyperLogLog++\n\n");
 
-    res = calc(hllpp, arr, n, b, measure_time, cnt);
-    print_results(res);
+    print_results(calc(hllpp, arr, n, b, measure_time, cnt));
 
     free(arr);
 
