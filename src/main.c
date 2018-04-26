@@ -9,6 +9,15 @@
 
 #define ABS(x) ((x)<0 ? -(x) : (x))
 
+static struct result calc(double (*ptf)(uint32_t *, size_t, uint8_t), uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt);
+static void print_results(struct result res);
+
+struct result {
+    double estimate;
+    double abs_error;
+    double time_spent;
+};
+
 int main(int argc, char *argv[])
 {
     static uint8_t p = 27; // Cardinality of elements 2^p , p -> [4..30]
@@ -24,11 +33,14 @@ int main(int argc, char *argv[])
 
     static const unsigned seed = 1;
 
+    static const uint8_t measure_time = 1;
+
     const size_t n = 1UL << p;
 
     uint32_t *arr = malloc(sizeof *arr * n);
 
     srand(seed);
+
     // Fill arr with random values from 0..
     uint32_t mask = 1UL * n + (n - 1UL);
     for (size_t i = 0; i < n; ++i) {
@@ -44,37 +56,47 @@ int main(int argc, char *argv[])
     printf("Number of distinct elements: %u\n", cnt);
     printf("Ratio %% : %.3f\n", cnt * 100.0 / n);
 
+    struct result res;
     // Find approximation of distinct items with HyperLogLog
     printf("\nHyperLogLog\n\n");
 
-    clock_t begin = clock();
-
-    double estimate = hll(arr, n, b);
-
-    clock_t end = clock();
-    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-
-    printf("Estimate: %f\n", estimate);
-    double error = (estimate - cnt) * 100 / cnt;
-    printf("Absolute error %% : %.3f\n", ABS(error));
-    printf("Time spent: %.3f\n", time_spent);
+    res = calc(hll, arr, n, b, measure_time, cnt);
+    print_results(res);
 
     // Find approximation of distinct items with HyperLogLog++
     printf("\nHyperLogLog++\n\n");
 
-    begin = clock();
-
-    estimate = hllpp(arr, n, b);
-
-    end = clock();
-    time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-
-    printf("Estimate: %f\n", estimate);
-    error = (estimate - cnt) * 100 / cnt;
-    printf("Absolute Error %% : %.3f\n", ABS(error));
-    printf("Time spent: %.3f\n", time_spent);
+    res = calc(hllpp, arr, n, b, measure_time, cnt);
+    print_results(res);
 
     free(arr);
 
     return 0;
+}
+
+static struct result calc(double (*ptf)(uint32_t *, size_t, uint8_t), uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt) {
+    struct result res;
+    res.time_spent = -1.0;
+   
+    if (measure_time != 0) {
+        clock_t begin = clock();
+
+        res.estimate = (*ptf)(arr, n, b);
+
+        clock_t end = clock();
+
+        res.time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+        res.abs_error = ABS((res.estimate - cnt) * 100 / cnt);
+    } else {
+        res.estimate = (*ptf)(arr, n, b);
+        res.abs_error = ABS((res.estimate - cnt) * 100 / cnt);
+    }
+    return res;
+}
+
+static void print_results(struct result res) {
+    printf("Estimate: %f\n", res.estimate);
+    printf("Absolute error %% : %.3f\n", res.abs_error);
+    if (res.time_spent >= 0)
+        printf("Time spent: %.3f\n", res.time_spent);
 }

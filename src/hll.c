@@ -4,6 +4,7 @@
 
 #include "hashing.h"
 #include "hll.h"
+// #include "xxhash.h"
 
 static uint8_t find_leftmost_one_position(uint32_t a, uint8_t offset);
 
@@ -27,10 +28,12 @@ double hll(uint32_t *arr, size_t n, uint8_t b)
         a = 0.673;
     }
 
+    // size_t s_arr = sizeof *arr;
     size_t hash_mask = sizeof(uint32_t) * CHAR_BIT - b;
 
     for (size_t i = 0; i < n; ++i) {
         uint32_t hashed = hash_func1(arr[i]);
+        // uint32_t hashed = XXH32(arr + i, s_arr, 0UL);
         uint16_t reg_id = hashed >> hash_mask;
         uint32_t w = hashed & (UINT32_MAX >> b);
         uint8_t lm_one_pos = find_leftmost_one_position(w, b);
