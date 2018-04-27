@@ -1,6 +1,11 @@
 #include <stdlib.h>
 #include "sorting.h"
 
+size_t sort_count_distinct(uint32_t *a, size_t n) {
+    sort(a, n);
+    return count_sorted_array_distinct(a, n);
+}
+
 /* Count distinct items in a sorted array of n uint32_t, pointed to by a. */
 size_t count_sorted_array_distinct(uint32_t* a, size_t n)
 {
