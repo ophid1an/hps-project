@@ -6,9 +6,11 @@
 
 #include "hll.h"
 #include "hllpp.h"
+#include "sorting.h"
 
 #define ABS(x) ((x)<0 ? -(x) : (x))
 
+static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n, uint32_t mask, unsigned seed);
 static struct result calc(double (*ptf)(uint32_t *, size_t, uint8_t), uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt);
 static void print_results(struct result res);
 
@@ -22,6 +24,7 @@ int main(int argc, char *argv[])
 {
     static uint8_t p = 27; // Cardinality of elements 2^p , p -> [4..30]
     static uint8_t b = 14; // Cardinality of registers 2^b , b -> [4..16]
+    static unsigned seed = 1;
 
     if (argc >= 2) {
         p = strtoul(argv[1], NULL, 10);
@@ -31,7 +34,9 @@ int main(int argc, char *argv[])
         b = strtoul(argv[2], NULL, 10);
     }
 
-    static const unsigned seed = 1;
+    if (argc >= 4) {
+        seed = strtoul(argv[3], NULL, 10);
+    }
 
     static const uint8_t measure_time = 1;
 
@@ -39,22 +44,9 @@ int main(int argc, char *argv[])
 
     uint32_t *arr = malloc(sizeof *arr * n);
 
-    srand(seed);
-
-    // Fill arr with random values from 0..
     uint32_t mask = 1UL * n + (n - 1UL);
-    for (size_t i = 0; i < n; ++i) {
-        arr[i] = rand() & mask;
-    }
-    printf("Array of length %zu filled with [0 .. %u]!\n", n, mask);
 
-    // Distinct counts for p [4..30], seed = 1, mask = 1UL * n + (n - 1UL)
-    uint32_t cnts[] = { 14, 25, 50, 104, 206, 394, 800, 1609, 3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900, 1650602, 3300462, 6601586, 13202252, 26403875, 52807680, 105621810, 211235547, 422476956, 844963071 };
-
-    // Print distinct elements number of array
-    uint32_t cnt = cnts[p - 4U];
-    printf("Number of distinct elements: %u\n", cnt);
-    printf("Ratio %% : %.3f\n", cnt * 100.0 / n);
+    size_t cnt = fill_and_count_distinct(arr, p, n, mask, seed);
 
     // Find approximation of distinct items with HyperLogLog
     printf("\nHyperLogLog\n\n");
@@ -69,6 +61,35 @@ int main(int argc, char *argv[])
     free(arr);
 
     return 0;
+}
+
+static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n, uint32_t mask, unsigned seed) {
+    srand(seed);
+
+    // Fill arr with random values from 0..
+    for (size_t i = 0; i < n; ++i) {
+        arr[i] = rand() & mask;
+    }
+    printf("Array of length %zu filled with [0 .. %u]!\n", n, mask);
+
+    size_t cnt = 0;
+
+    // Distinct precalculated counts for p [0..30], seed = 1, mask = 1UL * n + (n - 1UL)
+    if (seed == 1 && mask == 1UL * n + (n - 1UL) && p >= 0 && p <=30) {
+        printf("Using precalculated values...\n");
+        size_t cnts[] = { 1, 2, 4, 8, 14, 25, 50, 104, 206, 394, 800, 1609, 3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900, 1650602, 3300462, 6601586, 13202252, 26403875, 52807680, 105621810, 211235547, 422476956, 844963071 };
+        cnt = cnts[p];
+    }
+    else {
+        printf("Counting distinct elements...\n");
+        cnt = sort_count_distinct(arr, n);
+    }
+    
+    // Print distinct elements number of array
+    printf("Number of distinct elements: %zu\n", cnt);
+    printf("Ratio %% : %.3f\n", cnt * 100.0 / n);
+
+    return cnt;
 }
 
 static struct result calc(double (*ptf)(uint32_t *, size_t, uint8_t), uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt) {
