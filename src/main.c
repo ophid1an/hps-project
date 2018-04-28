@@ -10,17 +10,17 @@
 
 #define ABS(x) ((x) < 0 ? -(x) : (x))
 
-static size_t fill_and_count_distinct(uint32_t* arr, uint8_t p, size_t n,
-    uint32_t mask, unsigned seed);
-static struct result calc(double (*ptf)(uint32_t*, size_t, uint8_t),
-    uint32_t* arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt);
-static void print_results(struct result res);
-
 struct result {
     double estimate;
     double perc_error;
     double time_spent;
 };
+
+static size_t fill_and_count_distinct(uint32_t* arr, uint8_t p, size_t n,
+    uint32_t mask, unsigned seed);
+static void calc(struct result* res, double (*ptf)(uint32_t*, size_t, uint8_t),
+    uint32_t* arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt);
+static void print_results(const struct result* res);
 
 int main(int argc, char* argv[])
 {
@@ -50,15 +50,19 @@ int main(int argc, char* argv[])
 
     size_t cnt = fill_and_count_distinct(arr, p, n, mask, seed);
 
+    struct result res;
+
     // Find approximation of distinct items with HyperLogLog
     printf("\nHyperLogLog\n\n");
 
-    print_results(calc(hll, arr, n, b, measure_time, cnt));
+    calc(&res, hll, arr, n, b, measure_time, cnt);
+    print_results(&res);
 
     // Find approximation of distinct items with HyperLogLog++
     printf("\nHyperLogLog++\n\n");
 
-    print_results(calc(hllpp, arr, n, b, measure_time, cnt));
+    calc(&res, hllpp, arr, n, b, measure_time, cnt);
+    print_results(&res);
 
     free(arr);
 
@@ -79,7 +83,7 @@ static size_t fill_and_count_distinct(uint32_t* arr, uint8_t p, size_t n,
     size_t cnt = 0;
 
     // Distinct precalculated counts for p [0..30], seed = 1, mask = 1UL * n + (n - 1UL)
-    if (seed == 1 && mask == 1UL * n + (n - 1UL) && p >= 0 && p <= 30) {
+    if (seed == 1 && mask == 1UL * n + (n - 1UL) && p <= 30 && p >= 0) {
         printf("Using precalculated values...\n");
         size_t cnts[] = { 1, 2, 4, 8, 14, 25, 50, 104, 206, 394, 800, 1609,
             3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900,
@@ -98,33 +102,30 @@ static size_t fill_and_count_distinct(uint32_t* arr, uint8_t p, size_t n,
     return cnt;
 }
 
-static struct result calc(double (*ptf)(uint32_t*, size_t, uint8_t),
-    uint32_t* arr, size_t n, uint8_t b,
-    uint8_t measure_time, uint32_t cnt)
+static void calc(struct result* res, double (*ptf)(uint32_t*, size_t, uint8_t),
+    uint32_t* arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt)
 {
-    struct result res;
-    res.time_spent = -1.0;
+    res->time_spent = -1.0;
 
     if (measure_time != 0) {
         clock_t begin = clock();
 
-        res.estimate = (*ptf)(arr, n, b);
+        res->estimate = (*ptf)(arr, n, b);
 
         clock_t end = clock();
 
-        res.time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-        res.perc_error = ABS((cnt - res.estimate) * 100 / cnt);
+        res->time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+        res->perc_error = ABS((cnt - res->estimate) * 100 / cnt);
     } else {
-        res.estimate = (*ptf)(arr, n, b);
-        res.perc_error = ABS((cnt - res.estimate) * 100 / cnt);
+        res->estimate = (*ptf)(arr, n, b);
+        res->perc_error = ABS((cnt - res->estimate) * 100 / cnt);
     }
-    return res;
 }
 
-static void print_results(struct result res)
+static void print_results(const struct result* res)
 {
-    printf("Estimate: %f\n", res.estimate);
-    printf("Percent error: %.3f\n", res.perc_error);
-    if (res.time_spent >= 0)
-        printf("Time spent: %.3f\n", res.time_spent);
+    printf("Estimate: %f\n", res->estimate);
+    printf("Percent error: %.3f\n", res->perc_error);
+    if (res->time_spent >= 0)
+        printf("Time spent: %.3f\n", res->time_spent);
 }
