@@ -8,10 +8,10 @@
 
 static uint8_t find_leftmost_one_position(uint32_t a, uint8_t offset);
 
-double hll(uint32_t *arr, size_t n, uint8_t b)
+double hll(uint32_t* arr, size_t n, uint8_t b)
 {
     uint32_t m = 1UL << b;
-    uint8_t *registers = malloc(sizeof *registers * m);
+    uint8_t* registers = malloc(sizeof *registers * m);
     for (size_t i = 0; i < m; ++i) {
         registers[i] = 0;
     }
@@ -37,7 +37,9 @@ double hll(uint32_t *arr, size_t n, uint8_t b)
         uint16_t reg_id = hashed >> hash_mask;
         uint32_t w = hashed & (UINT32_MAX >> b);
         uint8_t lm_one_pos = find_leftmost_one_position(w, b);
-        registers[reg_id] = lm_one_pos > registers[reg_id] ? lm_one_pos : registers[reg_id];
+        registers[reg_id] = lm_one_pos > registers[reg_id]
+            ? lm_one_pos
+            : registers[reg_id];
     }
 
     uint32_t zero_registers_card = m;

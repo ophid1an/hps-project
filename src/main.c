@@ -8,10 +8,12 @@
 #include "hllpp.h"
 #include "sorting.h"
 
-#define ABS(x) ((x)<0 ? -(x) : (x))
+#define ABS(x) ((x) < 0 ? -(x) : (x))
 
-static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n, uint32_t mask, unsigned seed);
-static struct result calc(double (*ptf)(uint32_t *, size_t, uint8_t), uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt);
+static size_t fill_and_count_distinct(uint32_t* arr, uint8_t p, size_t n,
+    uint32_t mask, unsigned seed);
+static struct result calc(double (*ptf)(uint32_t*, size_t, uint8_t),
+    uint32_t* arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt);
 static void print_results(struct result res);
 
 struct result {
@@ -20,7 +22,7 @@ struct result {
     double time_spent;
 };
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     static uint8_t p = 27; // Cardinality of elements 2^p , p -> [4..30]
     static uint8_t b = 14; // Cardinality of registers 2^b , b -> [4..16]
@@ -42,7 +44,7 @@ int main(int argc, char *argv[])
 
     const size_t n = 1UL << p;
 
-    uint32_t *arr = malloc(sizeof *arr * n);
+    uint32_t* arr = malloc(sizeof *arr * n);
 
     uint32_t mask = 1UL * n + (n - 1UL);
 
@@ -63,7 +65,9 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n, uint32_t mask, unsigned seed) {
+static size_t fill_and_count_distinct(uint32_t* arr, uint8_t p, size_t n,
+    uint32_t mask, unsigned seed)
+{
     srand(seed);
 
     // Fill arr with random values from 0..
@@ -75,16 +79,18 @@ static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n, uint32
     size_t cnt = 0;
 
     // Distinct precalculated counts for p [0..30], seed = 1, mask = 1UL * n + (n - 1UL)
-    if (seed == 1 && mask == 1UL * n + (n - 1UL) && p >= 0 && p <=30) {
+    if (seed == 1 && mask == 1UL * n + (n - 1UL) && p >= 0 && p <= 30) {
         printf("Using precalculated values...\n");
-        size_t cnts[] = { 1, 2, 4, 8, 14, 25, 50, 104, 206, 394, 800, 1609, 3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900, 1650602, 3300462, 6601586, 13202252, 26403875, 52807680, 105621810, 211235547, 422476956, 844963071 };
+        size_t cnts[] = { 1, 2, 4, 8, 14, 25, 50, 104, 206, 394, 800, 1609,
+            3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900,
+            1650602, 3300462, 6601586, 13202252, 26403875, 52807680, 105621810,
+            211235547, 422476956, 844963071 };
         cnt = cnts[p];
-    }
-    else {
+    } else {
         printf("Counting distinct elements...\n");
         cnt = sort_count_distinct(arr, n);
     }
-    
+
     // Print distinct elements number of array
     printf("Number of distinct elements: %zu\n", cnt);
     printf("Ratio %% : %.3f\n", cnt * 100.0 / n);
@@ -92,10 +98,13 @@ static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n, uint32
     return cnt;
 }
 
-static struct result calc(double (*ptf)(uint32_t *, size_t, uint8_t), uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt) {
+static struct result calc(double (*ptf)(uint32_t*, size_t, uint8_t),
+    uint32_t* arr, size_t n, uint8_t b,
+    uint8_t measure_time, uint32_t cnt)
+{
     struct result res;
     res.time_spent = -1.0;
-   
+
     if (measure_time != 0) {
         clock_t begin = clock();
 
@@ -112,7 +121,8 @@ static struct result calc(double (*ptf)(uint32_t *, size_t, uint8_t), uint32_t *
     return res;
 }
 
-static void print_results(struct result res) {
+static void print_results(struct result res)
+{
     printf("Estimate: %f\n", res.estimate);
     printf("Percent error: %.3f\n", res.perc_error);
     if (res.time_spent >= 0)
