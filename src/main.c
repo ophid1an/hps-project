@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     // Find approximation of distinct items with HyperLogLog++ using OpenMP
     for (uint8_t i = 1; i <= n_threads; i++) {
         printf("\nHyperLogLog++\n\n");
-        printf("Using %u threads.\n", i);
+        printf("Using %u thread(s).\n", i);
 
         calc(&res, hllpp_omp, arr, n, b, measure_time, cnt, i);
         print_results(&res);
