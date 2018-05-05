@@ -1,11 +1,11 @@
 CC = gcc
 CFLAGS = -std=c99 -pedantic-errors -O3 -Wall -Wextra
-LIBS = -lm
+LIBS = -lm -fopenmp
 
 SRCDIR = ./src
 BINDIR = ./bin
 
-_SRC = main.c hashing.c xxhash.c hll.c hllpp.c sorting.c
+_SRC = main.c sorting.c hllpp_omp.c xxhash.c
 SRC = $(patsubst %,$(SRCDIR)/%,$(_SRC))
 
 hll: $(SRC)

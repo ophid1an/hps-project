@@ -1,11 +1,10 @@
+#include <omp.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
-#include "hll.h"
-#include "hllpp.h"
+#include "hllpp_omp.h"
 #include "sorting.h"
 
 #define ABS(x) ((x) < 0 ? -(x) : (x))
@@ -16,13 +15,13 @@ struct result {
     double time_spent;
 };
 
-static size_t fill_and_count_distinct(uint32_t* arr, uint8_t p, size_t n,
+static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
     uint32_t mask, unsigned seed);
-static void calc(struct result* res, double (*ptf)(uint32_t*, size_t, uint8_t),
-    uint32_t* arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt);
-static void print_results(const struct result* res);
+static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, uint8_t),
+    uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt, uint8_t n_threads);
+static void print_results(const struct result *res);
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     static uint8_t p = 27; // Cardinality of elements 2^p , p -> [4..30]
     static uint8_t b = 14; // Cardinality of registers 2^b , b -> [4..16]
@@ -42,9 +41,10 @@ int main(int argc, char* argv[])
 
     static const uint8_t measure_time = 1;
 
+    const uint8_t n_threads = omp_get_num_procs();
     const size_t n = 1UL << p;
 
-    uint32_t* arr = malloc(sizeof *arr * n);
+    uint32_t *arr = malloc(sizeof *arr * n);
 
     uint32_t mask = 1UL * n + (n - 1UL);
 
@@ -52,24 +52,21 @@ int main(int argc, char* argv[])
 
     struct result res;
 
-    // Find approximation of distinct items with HyperLogLog
-    printf("\nHyperLogLog\n\n");
+    // Find approximation of distinct items with HyperLogLog++ using OpenMP
+    for (uint8_t i = 1; i <= n_threads; i++) {
+        printf("\nHyperLogLog++\n\n");
+        printf("Using %u threads.\n", i);
 
-    calc(&res, hll, arr, n, b, measure_time, cnt);
-    print_results(&res);
-
-    // Find approximation of distinct items with HyperLogLog++
-    printf("\nHyperLogLog++\n\n");
-
-    calc(&res, hllpp, arr, n, b, measure_time, cnt);
-    print_results(&res);
+        calc(&res, hllpp_omp, arr, n, b, measure_time, cnt, i);
+        print_results(&res);
+    }
 
     free(arr);
 
     return 0;
 }
 
-static size_t fill_and_count_distinct(uint32_t* arr, uint8_t p, size_t n,
+static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
     uint32_t mask, unsigned seed)
 {
     srand(seed);
@@ -102,30 +99,30 @@ static size_t fill_and_count_distinct(uint32_t* arr, uint8_t p, size_t n,
     return cnt;
 }
 
-static void calc(struct result* res, double (*ptf)(uint32_t*, size_t, uint8_t),
-    uint32_t* arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt)
+static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, uint8_t),
+    uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt, uint8_t n_threads)
 {
     res->time_spent = -1.0;
 
     if (measure_time != 0) {
-        clock_t begin = clock();
+        double begin = omp_get_wtime();
 
-        res->estimate = (*ptf)(arr, n, b);
+        res->estimate = (*ptf)(arr, n, b, n_threads);
 
-        clock_t end = clock();
+        double end = omp_get_wtime();
 
-        res->time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+        res->time_spent = end - begin;
         res->perc_error = ABS((cnt - res->estimate) * 100 / cnt);
     } else {
-        res->estimate = (*ptf)(arr, n, b);
+        res->estimate = (*ptf)(arr, n, b, n_threads);
         res->perc_error = ABS((cnt - res->estimate) * 100 / cnt);
     }
 }
 
-static void print_results(const struct result* res)
+static void print_results(const struct result *res)
 {
     printf("Estimate: %f\n", res->estimate);
     printf("Percent error: %.3f\n", res->perc_error);
     if (res->time_spent >= 0)
-        printf("Time spent: %.3f\n", res->time_spent);
+        printf("Time in seconds: %.3f\n", res->time_spent);
 }

@@ -1,13 +1,14 @@
 #include <limits.h>
 #include <math.h>
+#include <omp.h>
 #include <stdlib.h>
 
-#include "hllpp.h"
+#include "hllpp_omp.h"
 #include "xxhash.h"
 
 static uint8_t find_leftmost_one_position(uint64_t a, uint8_t offset);
 
-double hllpp(uint32_t *arr, size_t n, uint8_t b)
+double hllpp_omp(uint32_t *arr, size_t n, uint8_t b, uint8_t n_threads)
 {
     uint32_t m = 1UL << b;
     uint8_t *registers = malloc(sizeof *registers * m);
@@ -30,12 +31,34 @@ double hllpp(uint32_t *arr, size_t n, uint8_t b)
     size_t arr_elem_len = sizeof *arr;
     size_t hash_mask = sizeof(uint64_t) * CHAR_BIT - b;
 
-    for (size_t i = 0; i < n; ++i) {
-        uint64_t hashed = XXH64(arr + i, arr_elem_len, 0ULL);
-        uint16_t reg_id = hashed >> hash_mask;
-        uint64_t w = hashed & (UINT64_MAX >> b);
-        uint8_t lm_one_pos = find_leftmost_one_position(w, b);
-        registers[reg_id] = lm_one_pos > registers[reg_id] ? lm_one_pos : registers[reg_id];
+    omp_set_num_threads(n_threads);
+#pragma omp parallel
+    {
+        int t_id = omp_get_thread_num();
+        size_t batch_size = n / n_threads;
+        uint8_t *thread_registers = malloc(sizeof *thread_registers * m);
+
+        for (size_t i = 0; i < m; ++i) {
+            thread_registers[i] = 0;
+        }
+
+        if (t_id == n_threads - 1) {
+            batch_size += n % n_threads;
+        }
+
+        for (size_t i = n / n_threads * t_id, j = i + batch_size; i < j; ++i) {
+            uint64_t hashed = XXH64(arr + i, arr_elem_len, 0ULL);
+            uint16_t reg_id = hashed >> hash_mask;
+            uint64_t w = hashed & (UINT64_MAX >> b);
+            uint8_t lm_one_pos = find_leftmost_one_position(w, b);
+            thread_registers[reg_id] = lm_one_pos > thread_registers[reg_id] ? lm_one_pos : thread_registers[reg_id];
+        }
+
+        for (size_t i = 0; i < m; ++i) {
+            registers[i] = thread_registers[i] > registers[i] ? thread_registers[i] : registers[i];
+        }
+
+        free(thread_registers);
     }
 
     uint32_t zero_registers_card = m;
