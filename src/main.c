@@ -45,6 +45,10 @@ int main(int argc, char *argv[])
     const size_t n = 1UL << p;
 
     uint32_t *arr = malloc(sizeof *arr * n);
+    if (arr == NULL) {
+        fprintf(stderr, "Fatal: failed to allocate memory.\n");
+        return EXIT_FAILURE;
+    }
 
     uint32_t mask = 1UL * n + (n - 1UL);
 

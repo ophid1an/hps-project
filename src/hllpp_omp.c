@@ -1,6 +1,7 @@
 #include <limits.h>
 #include <math.h>
 #include <omp.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "hllpp_omp.h"
@@ -12,6 +13,10 @@ double hllpp_omp(uint32_t *arr, size_t n, uint8_t b, uint8_t n_threads)
 {
     uint32_t m = 1UL << b;
     uint8_t *registers = malloc(sizeof *registers * m);
+    if (registers == NULL) {
+        fprintf(stderr, "Fatal: failed to allocate memory.\n");
+        exit(EXIT_FAILURE);
+    }
     for (size_t i = 0; i < m; ++i) {
         registers[i] = 0;
     }
@@ -37,6 +42,10 @@ double hllpp_omp(uint32_t *arr, size_t n, uint8_t b, uint8_t n_threads)
         int t_id = omp_get_thread_num();
         size_t batch_size = n / n_threads;
         uint8_t *thread_registers = malloc(sizeof *thread_registers * m);
+        if (thread_registers == NULL) {
+            fprintf(stderr, "Fatal: failed to allocate memory.\n");
+            exit(EXIT_FAILURE);
+        }
 
         for (size_t i = 0; i < m; ++i) {
             thread_registers[i] = 0;
