@@ -7,6 +7,8 @@
 #include "hllpp_omp.h"
 #include "xxhash.h"
 
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+
 static uint8_t find_leftmost_one_position(uint64_t a, uint8_t offset);
 
 double hllpp_omp(uint32_t *arr, size_t n, uint8_t b, uint8_t n_threads)
@@ -60,11 +62,14 @@ double hllpp_omp(uint32_t *arr, size_t n, uint8_t b, uint8_t n_threads)
             uint16_t reg_id = hashed >> hash_mask;
             uint64_t w = hashed & (UINT64_MAX >> b);
             uint8_t lm_one_pos = find_leftmost_one_position(w, b);
-            thread_registers[reg_id] = lm_one_pos > thread_registers[reg_id] ? lm_one_pos : thread_registers[reg_id];
+            thread_registers[reg_id] = MAX(lm_one_pos, thread_registers[reg_id]);
         }
 
-        for (size_t i = 0; i < m; ++i) {
-            registers[i] = thread_registers[i] > registers[i] ? thread_registers[i] : registers[i];
+#pragma omp critical
+        {
+            for (size_t i = 0; i < m; ++i) {
+                registers[i] = MAX(thread_registers[i], registers[i]);
+            }
         }
 
         free(thread_registers);
