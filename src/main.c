@@ -100,7 +100,7 @@ static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
 
     // Print distinct elements number of array
     printf("Number of distinct elements: %zu\n", cnt);
-    printf("Ratio %% : %.3f\n", cnt * 100.0 / n);
+    printf("Percentage: %.3f\n", cnt * 100.0 / n);
 
     return cnt;
 }
