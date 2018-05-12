@@ -13,13 +13,14 @@ struct result {
     double estimate;
     double perc_error;
     double time_spent;
+    double time_spent_one_thread;
 };
 
 static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
     uint32_t mask, unsigned seed);
 static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, uint8_t),
     uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt, uint8_t n_threads);
-static void print_results(const struct result *res);
+static void print_results(const struct result *res, uint8_t n_threads);
 
 int main(int argc, char *argv[])
 {
@@ -55,6 +56,7 @@ int main(int argc, char *argv[])
     size_t cnt = fill_and_count_distinct(arr, p, n, mask, seed);
 
     struct result res;
+    res.time_spent_one_thread = -1.0;
 
     // Find approximation of distinct items with HyperLogLog++ using OpenMP
     printf("\nHyperLogLog++\n");
@@ -62,7 +64,7 @@ int main(int argc, char *argv[])
         printf("\nUsing %u thread(s).\n", i);
 
         calc(&res, hllpp_omp, arr, n, b, measure_time, cnt, i);
-        print_results(&res);
+        print_results(&res, i);
     }
 
     free(arr);
@@ -84,7 +86,7 @@ static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
     size_t cnt = 0;
 
     // Distinct precalculated counts for p [0..30], seed = 1, mask = 1UL * n + (n - 1UL)
-    if (seed == 1 && mask == 1UL * n + (n - 1UL) && p <= 30 && p >= 0) {
+    if (seed == 1 && mask == 1UL * n + (n - 1UL) && p <= 30) {
         printf("Using precalculated values...\n");
         size_t cnts[] = { 1, 2, 4, 8, 14, 25, 50, 104, 206, 394, 800, 1609,
             3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900,
@@ -116,6 +118,8 @@ static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, 
         double end = omp_get_wtime();
 
         res->time_spent = end - begin;
+        if (n_threads == 1)
+            res->time_spent_one_thread = res->time_spent;
         res->perc_error = ABS((cnt - res->estimate) * 100 / cnt);
     } else {
         res->estimate = (*ptf)(arr, n, b, n_threads);
@@ -123,10 +127,14 @@ static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, 
     }
 }
 
-static void print_results(const struct result *res)
+static void print_results(const struct result *res, uint8_t n_threads)
 {
     printf("Estimate: %f\n", res->estimate);
     printf("Percent error: %.3f\n", res->perc_error);
-    if (res->time_spent >= 0)
+    if (res->time_spent >= 0) {
         printf("Time in seconds: %.3f\n", res->time_spent);
+        double speedup = res->time_spent_one_thread / res->time_spent;
+        printf("Speedup: %.3f\n", speedup);
+        printf("Efficieny: %.3f\n", speedup / n_threads);
+    }
 }
