@@ -20,7 +20,7 @@ static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
     uint32_t mask, unsigned seed);
 static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, uint8_t),
     uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt, uint8_t n_threads);
-static void print_results(const struct result *res, uint8_t n_threads);
+static void print_results(const struct result *res, uint8_t p, uint8_t b, unsigned seed, uint8_t n_threads, FILE *fptr);
 
 int main(int argc, char *argv[])
 {
@@ -41,6 +41,12 @@ int main(int argc, char *argv[])
     }
 
     static const uint8_t measure_time = 1;
+
+    FILE *fptr = fopen("results.csv", "w");
+    if (fptr == NULL) {
+        printf("Error opening file!\n");
+        return (EXIT_FAILURE);
+    }
 
     const uint8_t n_threads = omp_get_num_procs();
     const size_t n = 1UL << p;
@@ -64,9 +70,10 @@ int main(int argc, char *argv[])
         printf("\nUsing %u thread(s).\n", i);
 
         calc(&res, hllpp_omp, arr, n, b, measure_time, cnt, i);
-        print_results(&res, i);
+        print_results(&res, p, b, seed, i, fptr);
     }
 
+    fclose(fptr);
     free(arr);
 
     return 0;
@@ -127,14 +134,17 @@ static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, 
     }
 }
 
-static void print_results(const struct result *res, uint8_t n_threads)
+static void print_results(const struct result *res, uint8_t p, uint8_t b, unsigned seed, uint8_t n_threads, FILE *fptr)
 {
+    double speedup = res->time_spent_one_thread / res->time_spent;
+    double efficiency = speedup / n_threads;
     printf("Estimate: %f\n", res->estimate);
     printf("Percent error: %.3f\n", res->perc_error);
-    if (res->time_spent >= 0) {
-        printf("Time in seconds: %.3f\n", res->time_spent);
-        double speedup = res->time_spent_one_thread / res->time_spent;
-        printf("Speedup: %.3f\n", speedup);
-        printf("Efficieny: %.3f\n", speedup / n_threads);
+    printf("Time in seconds: %.3f\n", res->time_spent);
+    printf("Speedup: %.3f\n", speedup);
+    printf("Efficiency: %.3f\n", efficiency);
+    if (n_threads == 1) {
+        fprintf(fptr, "integers,registers,seed,threads,time,speedup,efficiency,percent error\n");
     }
+    fprintf(fptr, "2^%u,2^%u,%u,%u,%.3f,%.3f,%.3f,%.3f\n", p, b, seed, n_threads, res->time_spent, speedup, efficiency, res->perc_error);
 }
