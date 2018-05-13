@@ -144,7 +144,7 @@ static void print_results(const struct result *res, uint8_t p, uint8_t b, unsign
     printf("Speedup: %.3f\n", speedup);
     printf("Efficiency: %.3f\n", efficiency);
     if (n_threads == 1) {
-        fprintf(fptr, "integers,registers,seed,threads,time,speedup,efficiency,percent error\n");
+        fprintf(fptr, "Array length,Registers,Seed,Threads,Time,Speedup,Efficiency,Percent error\n");
     }
     fprintf(fptr, "2^%u,2^%u,%u,%u,%.3f,%.3f,%.3f,%.3f\n", p, b, seed, n_threads, res->time_spent, speedup, efficiency, res->perc_error);
 }
