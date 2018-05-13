@@ -56,6 +56,7 @@ Build with `make`, then `./bin/hll [p [b [s]]]`, where 2^**p** is the length of 
 | 2^30 | 6 | 8.524 | 4.594 | 0.766 | 0.647 |
 | 2^30 | 7 | 7.788 | 5.028 | 0.718 | 0.647 |
 | 2^30 | 8 | 6.912 | 5.665 | 0.708 | 0.647 |
+
 ![](results/openmp.png)
 ### References
 * [“HyperLogLog.” Wikipedia, April 3, 2018.](https://en.wikipedia.org/w/index.php?title=HyperLogLog&oldid=833994784)

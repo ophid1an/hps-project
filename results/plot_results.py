@@ -33,6 +33,6 @@ ax2.grid(linestyle='--', linewidth=0.5, axis='y')
 fig.legend(arr_lengths, title='Array length', bbox_to_anchor=(subp_layout_right + 0.005, 0.5), loc='center left',
            ncol=2, bbox_transform=plt.gcf().transFigure)
 
-fig.savefig(filename.split(sep='.')[0] + '.png', bbox_inches="tight", dpi='figure', transparent=True)
+fig.savefig(filename.split(sep='.')[0] + '.png', bbox_inches="tight")
 
 # plt.show()
