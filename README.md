@@ -1,9 +1,9 @@
 # Project for the High Performance Systems course
 ## Parallel implementation of the HyperLogLog++ algorithm
 ### Description
-Fills an array of length 2^**p** of 32-bit unsigned integers with random values and counts the distinct numbers using qsort(). It then tries to approximate this count by using a simple implementation of the HyperLogLog++ (Heule et al. 2013) algorithm.
+Fills an array of 2^**p** 32-bit unsigned integers with random values and counts the distinct numbers using qsort(). It then approximates this count by using an implementation (without the bias corrections) of the HyperLogLog++ (Heule et al. 2013) algorithm using 64-bit hashes produced by [xxHash](https://github.com/Cyan4973/xxHash).
 ### Usage
-`make` and then `./bin/hll [p [b [s]]]` where 2^**p** is the length of the array (default: 27 = 134217728 32-bit integers occupying 512MiB), 2^**b** [4..16] the number of 8-bit "registers" the algorithm will use (default: 14 = 16384 "registers") and **s** the unsigned integer to seed the RNG used by rand() (default: 1). The count of distinct numbers has been precalculated for **s** = 1 and **p** = [0..30].
+Build with `make`, then `./bin/hll [p [b [s]]]`, where 2^**p** is the length of the array (default: 27 = 134217728 32-bit integers occupying 512MiB), 2^**b** [4..16] the number of 8-bit "registers" the algorithm will use (default: 14 = 16384 registers) and **s** the unsigned integer to seed the RNG used by rand() (default: 1). The count of distinct numbers has been precalculated for **s** = 1 and **p** = [0..30].
 ### Results - AMD FX-8350 / Debian 4.9.0-6-amd64 / gcc 6.3.0
 #### OpenMP / b = 14 (16384 "registers"), s = 1
 |32-bit integers|Threads|Time|Speedup|Percent Error|
@@ -65,3 +65,4 @@ Fills an array of length 2^**p** of 32-bit unsigned integers with random values 
 ](biblio/p683-heule.pdf)
 * [Flajolet, Philippe, Éric Fusy, Olivier Gandouet, and Frédéric Meunier. “Hyperloglog: The Analysis of a near-Optimal Cardinality Estimation Algorithm.” In AofA: Analysis of Algorithms, 137–156. Discrete Mathematics and Theoretical Computer Science, 2007.
 ](biblio/FlFuGaMe07.pdf)
+* [Collet, Yann. xxHash: Extremely Fast Non-Cryptographic Hash Algorithm. C, 2018.](https://github.com/Cyan4973/xxHash)
