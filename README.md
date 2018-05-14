@@ -4,10 +4,11 @@ Fills an array of 2^**p** 32-bit unsigned integers with random values and counts
 ## Usage
 Build with `make`, then `./bin/hll [p [b [s]]]`, where 2^**p** is the length of the array (default: 27 = 134217728 32-bit integers occupying 512MiB), 2^**b** [4..16] the number of 8-bit "registers" the algorithm will use (default: 14 = 16384 registers) and **s** the unsigned integer to seed the RNG used by rand() (default: 1). The count of distinct numbers has been precalculated for **s** = 1 and **p** = [0..30].
 ## Results 
-### OpenMP - AMD FX-8350@4.0GHz / Debian 4.9.0-6-amd64 / gcc 6.3.0 (with -O3 optimizations)
+### OpenMP - AMD FX-8350 4.0GHz / Debian 4.9.0-6-amd64 / gcc 6.3.0 (with -O3 optimizations)
 Options used: b = 14 (16384 "registers"), s = 1
 
 Time values were calculated as the interquartile mean (IQM) of the timings taken from 20 runs for each array length.
+
 | Array length | Threads | Time | Speedup | Efficiency | Percent error |
 |:------------:|:-------:|:------:|:-------:|:----------:|:-------------:|
 | 25 | 1 | 1.220 | 1.000 | 1.000 | 0.226 |
