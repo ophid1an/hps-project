@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     res.time_spent_one_thread = -1.0;
 
     // Find approximation of distinct items with HyperLogLog++ using OpenMP
-    printf("\nHyperLogLog++\n");
+    printf("\nHyperLogLog++ using OpenMP\n");
     for (uint8_t i = 1; i <= n_threads; i++) {
         printf("\nUsing %u thread(s).\n", i);
 
