@@ -1,3 +1,4 @@
+#include <float.h>
 #include <omp.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -164,5 +165,5 @@ static void print_results(const struct result *res, uint8_t p, uint8_t b, unsign
     if (first_call == 1) {
         fprintf(fptr, "Array length,Registers,Seed,Run,Threads,Time,Percent error\n");
     }
-    fprintf(fptr, "%u,%u,%u,%u,%u,%f,%f\n", p, b, seed, run, n_threads, res->time_spent, res->perc_error);
+    fprintf(fptr, "%u,%u,%u,%u,%u,%.*g,%f\n", p, b, seed, run, n_threads, DBL_DIG, res->time_spent, res->perc_error);
 }
