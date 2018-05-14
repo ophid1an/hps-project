@@ -20,13 +20,17 @@ static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
     uint32_t mask, unsigned seed);
 static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, uint8_t),
     uint32_t *arr, size_t n, uint8_t b, uint32_t cnt, uint8_t n_threads);
-static void print_results(const struct result *res, uint8_t p, uint8_t b, unsigned seed, uint8_t n_threads, FILE *fptr);
+static void print_results(const struct result *res, uint8_t p, uint8_t b, unsigned seed,
+    uint8_t run, uint8_t n_threads, FILE *fptr, uint8_t first_call);
 
 int main(int argc, char *argv[])
 {
     static uint8_t p = 27; // Cardinality of elements 2^p , p -> [4..30]
     static uint8_t b = 14; // Cardinality of registers 2^b , b -> [4..16]
     static unsigned seed = 1;
+    static uint8_t runs = 1;
+    static const char *filename = "results.csv";
+    static uint8_t n_threads = 0;
 
     if (argc >= 2) {
         p = strtoul(argv[1], NULL, 10);
@@ -40,13 +44,26 @@ int main(int argc, char *argv[])
         seed = strtoul(argv[3], NULL, 10);
     }
 
-    FILE *fptr = fopen("results.csv", "w");
+    if (argc >= 5) {
+        runs = strtoul(argv[4], NULL, 10);
+    }
+
+    if (argc >= 6) {
+        filename = argv[5];
+    }
+
+    if (argc >= 7) {
+        n_threads = strtoul(argv[6], NULL, 10);
+    }
+
+    uint8_t max_threads = omp_get_num_procs();
+
+    FILE *fptr = fopen(filename, "w");
     if (fptr == NULL) {
         printf("Error opening file!\n");
         return (EXIT_FAILURE);
     }
 
-    const uint8_t n_threads = omp_get_num_procs();
     const size_t n = 1UL << p;
 
     uint32_t *arr = malloc(sizeof *arr * n);
@@ -64,11 +81,20 @@ int main(int argc, char *argv[])
 
     // Find approximation of distinct items with HyperLogLog++ using OpenMP
     printf("\nHyperLogLog++ using OpenMP\n");
-    for (uint8_t i = 1; i <= n_threads; i++) {
-        printf("\nUsing %u thread(s).\n", i);
+    uint8_t first_call_to_print = 1;
+    for (uint8_t r = 1; r <= runs; ++r) {
+        uint8_t current_thread = 1;
+        if (n_threads != 0) {
+            current_thread = n_threads;
+            max_threads = n_threads;
+        }
+        for (; current_thread <= max_threads; ++current_thread) {
+            printf("\nRun %u, using %u thread(s).\n", r, current_thread);
 
-        calc(&res, hllpp_omp, arr, n, b, cnt, i);
-        print_results(&res, p, b, seed, i, fptr);
+            calc(&res, hllpp_omp, arr, n, b, cnt, current_thread);
+            print_results(&res, p, b, seed, r, current_thread, fptr, first_call_to_print);
+            first_call_to_print = 0;
+        }
     }
 
     fclose(fptr);
@@ -125,7 +151,8 @@ static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, 
     res->perc_error = ABS((cnt - res->estimate) * 100 / cnt);
 }
 
-static void print_results(const struct result *res, uint8_t p, uint8_t b, unsigned seed, uint8_t n_threads, FILE *fptr)
+static void print_results(const struct result *res, uint8_t p, uint8_t b, unsigned seed,
+    uint8_t run, uint8_t n_threads, FILE *fptr, uint8_t first_call)
 {
     double speedup = res->time_spent_one_thread / res->time_spent;
     double efficiency = speedup / n_threads;
@@ -134,8 +161,8 @@ static void print_results(const struct result *res, uint8_t p, uint8_t b, unsign
     printf("Time in seconds: %.3f\n", res->time_spent);
     printf("Speedup: %.3f\n", speedup);
     printf("Efficiency: %.3f\n", efficiency);
-    if (n_threads == 1) {
-        fprintf(fptr, "Array length,Registers,Seed,Threads,Time,Speedup,Efficiency,Percent error\n");
+    if (first_call == 1) {
+        fprintf(fptr, "Array length,Registers,Seed,Run,Threads,Time,Percent error\n");
     }
-    fprintf(fptr, "2^%u,2^%u,%u,%u,%.3f,%.3f,%.3f,%.3f\n", p, b, seed, n_threads, res->time_spent, speedup, efficiency, res->perc_error);
+    fprintf(fptr, "%u,%u,%u,%u,%u,%f,%f\n", p, b, seed, run, n_threads, res->time_spent, res->perc_error);
 }
