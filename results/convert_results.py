@@ -42,6 +42,10 @@ if threads > 1:
             data_converted.loc[idx, 'Speedup'] = time_one_thread / data_converted.loc[idx, 'Time']
             data_converted.loc[idx, 'Efficiency'] = data_converted.loc[idx, 'Speedup'] / thread
 
+data_converted['Array length'] = data_converted['Array length'].astype(str)
+for idx in data_converted.index.values:
+    data_converted.loc[idx, 'Array length'] = '2^' + data_converted.loc[idx, 'Array length']
+
 data_converted.to_csv(filename.split('.')[0] + '_converted.csv',
                       columns=['Array length', 'Threads', 'Time', 'Speedup', 'Efficiency', 'Percent error'],
                       index=False, float_format='%.3f')
