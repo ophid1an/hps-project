@@ -19,7 +19,7 @@ struct result {
 static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
     uint32_t mask, unsigned seed);
 static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, uint8_t),
-    uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt, uint8_t n_threads);
+    uint32_t *arr, size_t n, uint8_t b, uint32_t cnt, uint8_t n_threads);
 static void print_results(const struct result *res, uint8_t p, uint8_t b, unsigned seed, uint8_t n_threads, FILE *fptr);
 
 int main(int argc, char *argv[])
@@ -39,8 +39,6 @@ int main(int argc, char *argv[])
     if (argc >= 4) {
         seed = strtoul(argv[3], NULL, 10);
     }
-
-    static const uint8_t measure_time = 1;
 
     FILE *fptr = fopen("results.csv", "w");
     if (fptr == NULL) {
@@ -69,7 +67,7 @@ int main(int argc, char *argv[])
     for (uint8_t i = 1; i <= n_threads; i++) {
         printf("\nUsing %u thread(s).\n", i);
 
-        calc(&res, hllpp_omp, arr, n, b, measure_time, cnt, i);
+        calc(&res, hllpp_omp, arr, n, b, cnt, i);
         print_results(&res, p, b, seed, i, fptr);
     }
 
@@ -113,25 +111,18 @@ static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
 }
 
 static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, uint8_t),
-    uint32_t *arr, size_t n, uint8_t b, uint8_t measure_time, uint32_t cnt, uint8_t n_threads)
+    uint32_t *arr, size_t n, uint8_t b, uint32_t cnt, uint8_t n_threads)
 {
-    res->time_spent = -1.0;
+    double begin = omp_get_wtime();
 
-    if (measure_time != 0) {
-        double begin = omp_get_wtime();
+    res->estimate = (*ptf)(arr, n, b, n_threads);
 
-        res->estimate = (*ptf)(arr, n, b, n_threads);
+    double end = omp_get_wtime();
 
-        double end = omp_get_wtime();
-
-        res->time_spent = end - begin;
-        if (n_threads == 1)
-            res->time_spent_one_thread = res->time_spent;
-        res->perc_error = ABS((cnt - res->estimate) * 100 / cnt);
-    } else {
-        res->estimate = (*ptf)(arr, n, b, n_threads);
-        res->perc_error = ABS((cnt - res->estimate) * 100 / cnt);
-    }
+    res->time_spent = end - begin;
+    if (n_threads == 1)
+        res->time_spent_one_thread = res->time_spent;
+    res->perc_error = ABS((cnt - res->estimate) * 100 / cnt);
 }
 
 static void print_results(const struct result *res, uint8_t p, uint8_t b, unsigned seed, uint8_t n_threads, FILE *fptr)
