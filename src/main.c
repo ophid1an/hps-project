@@ -19,8 +19,8 @@ struct result {
 
 static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
     uint32_t mask, unsigned seed);
-static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, uint8_t),
-    uint32_t *arr, size_t n, uint8_t b, uint32_t cnt, uint8_t n_threads);
+static void calc(struct result *res, uint32_t *arr, size_t n, uint8_t b,
+    uint32_t cnt, uint8_t n_threads);
 static void print_results(const struct result *res, uint8_t p, uint8_t b, unsigned seed,
     uint8_t run, uint8_t n_threads, FILE *fptr, uint8_t first_call);
 
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
         for (; current_thread <= max_threads; ++current_thread) {
             printf("\nRun %u, using %u thread(s).\n", r, current_thread);
 
-            calc(&res, hllpp_omp, arr, n, b, cnt, current_thread);
+            calc(&res, arr, n, b, cnt, current_thread);
             print_results(&res, p, b, seed, r, current_thread, fptr, first_call_to_print);
             first_call_to_print = 0;
         }
@@ -137,12 +137,12 @@ static size_t fill_and_count_distinct(uint32_t *arr, uint8_t p, size_t n,
     return cnt;
 }
 
-static void calc(struct result *res, double (*ptf)(uint32_t *, size_t, uint8_t, uint8_t),
-    uint32_t *arr, size_t n, uint8_t b, uint32_t cnt, uint8_t n_threads)
+static void calc(struct result *res, uint32_t *arr, size_t n, uint8_t b,
+    uint32_t cnt, uint8_t n_threads)
 {
     double begin = omp_get_wtime();
 
-    res->estimate = (*ptf)(arr, n, b, n_threads);
+    res->estimate = hllpp_omp(arr, n, b, n_threads);
 
     double end = omp_get_wtime();
 
