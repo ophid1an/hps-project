@@ -60,7 +60,7 @@ Time values were calculated as the interquartile mean (IQM) of the timings taken
 | 2^30 | 7 | 8.456 | 4.588 | 0.655 | 0.647 |
 | 2^30 | 8 | 7.576 | 5.122 | 0.640 | 0.647 |
 
-![](results/openmp_converted.png)
+![](results/debian_openmp_converted.png)
 ## References
 * [“HyperLogLog.” Wikipedia, April 3, 2018.](https://en.wikipedia.org/w/index.php?title=HyperLogLog&oldid=833994784)
 * [Bozkus, Cem, and Basilio B. Fraguela. “Accelerating the HyperLogLog Cardinality Estimation Algorithm.” Scientific Programming 2017 (2017): 1–8. https://doi.org/10.1155/2017/2040865.
