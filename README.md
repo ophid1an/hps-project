@@ -1,6 +1,6 @@
 # Parallel implementation of the HyperLogLog++ algorithm
 ## Description
-Fills an array of 2^p 32-bit unsigned integers with random values and counts the distinct numbers using qsort(). It then approximates this count by using an implementation (without the bias corrections) of the HyperLogLog++ algorithm (Heule et al. 2013) using 64-bit hashes produced by [xxHash](https://github.com/Cyan4973/xxHash).
+Fills an array of 2^p 32-bit unsigned integers with random values and stores the precalculated count of distinct numbers. It then approximates this count by using an implementation (without the bias corrections) of the HyperLogLog++ algorithm (Heule et al. 2013) using 64-bit hashes produced by [xxHash](https://github.com/Cyan4973/xxHash).
 ## Usage
 Build with `make`, then `./bin/hllpp_omp [p [b [s]]]`, where 2^**p** is the length of the array (default: 27 = 134217728 32-bit integers occupying 512MiB), 2^**b** [4..16] the number of 8-bit "registers" the algorithm will use (default: 14 = 16384 registers) and **s** the unsigned integer to seed the RNG used by rand() (default: 1). The count of distinct numbers has been precalculated for **s** = 1 and **p** = [0..30].
 ## Results 

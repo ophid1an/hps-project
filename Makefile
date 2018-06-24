@@ -5,7 +5,7 @@ LIBS_OMP = -lm -fopenmp
 SRCDIR = ./src
 BINDIR = ./bin
 
-_SRC_OMP = main_omp.c sorting.c hllpp_omp.c xxhash.c
+_SRC_OMP = main_omp.c hllpp_omp.c xxhash.c
 SRC_OMP = $(patsubst %,$(SRCDIR)/%,$(_SRC_OMP))
 
 hllpp_omp: $(SRC_OMP)
