@@ -11,31 +11,44 @@
 
 static uint8_t find_leftmost_one_position(uint64_t a, uint8_t offset);
 
-double hllpp_omp(uint32_t *arr, size_t n, uint8_t b, uint8_t n_threads)
+double hllpp_omp(uint32_t *arr, size_t n, uint8_t end_of_buffer,
+    uint8_t b, uint8_t n_threads)
 {
     uint32_t m = 1UL << b;
-    uint8_t *registers = malloc(sizeof *registers * m);
+    static uint8_t *registers = NULL;
+    static uint8_t is_first_chunk = 0;
+
+    if (registers == NULL) {
+        registers = malloc(sizeof *registers * m);
+        is_first_chunk = 1;
+    }
+
     if (registers == NULL) {
         fprintf(stderr, "Fatal: failed to allocate memory.\n");
         exit(EXIT_FAILURE);
     }
-    for (size_t i = 0; i < m; ++i) {
-        registers[i] = 0;
+
+    if (is_first_chunk == 1) {
+        for (size_t i = 0; i < m; ++i) {
+            registers[i] = 0;
+        }
     }
 
-    double a = 0.0;
+    static double a;
 
-    if (m >= 128) {
-        a = 0.7213 / (1.0 + 1.079 / m);
-    } else if (m == 64) {
-        a = 0.709;
-    } else if (m == 32) {
-        a = 0.697;
-    } else if (m == 16) {
-        a = 0.673;
+    if (is_first_chunk == 1) {
+        if (m >= 128) {
+            a = 0.7213 / (1.0 + 1.079 / m);
+        } else if (m == 64) {
+            a = 0.709;
+        } else if (m == 32) {
+            a = 0.697;
+        } else if (m == 16) {
+            a = 0.673;
+        }
     }
 
-    size_t arr_elem_len = sizeof *arr;
+    static const size_t arr_elem_len = sizeof *arr;
     size_t hash_mask = sizeof(uint64_t) * CHAR_BIT - b;
 
     omp_set_num_threads(n_threads);
@@ -75,26 +88,32 @@ double hllpp_omp(uint32_t *arr, size_t n, uint8_t b, uint8_t n_threads)
         free(thread_registers);
     }
 
-    uint32_t zero_registers_card = m;
-    double sum_of_inverses = 0.0;
-    for (size_t i = 0; i < m; i++) {
-        if (registers[i] != 0)
-            --zero_registers_card;
-        sum_of_inverses += 1 / pow(2.0, registers[i]);
-    }
+    if (end_of_buffer == 1) {
+        uint32_t zero_registers_card = m;
+        double sum_of_inverses = 0.0;
+        for (size_t i = 0; i < m; i++) {
+            if (registers[i] != 0)
+                --zero_registers_card;
+            sum_of_inverses += 1 / pow(2.0, registers[i]);
+        }
 
-    free(registers);
+        free(registers);
+        registers = NULL;
 
-    double raw_estimate = a * m * m / sum_of_inverses;
+        double raw_estimate = a * m * m / sum_of_inverses;
 
-    if (raw_estimate <= 5 * m) {
-        if (zero_registers_card) {
-            return m * log((double)m / zero_registers_card);
+        if (raw_estimate <= 5 * m) {
+            if (zero_registers_card) {
+                return m * log((double)m / zero_registers_card);
+            } else {
+                return raw_estimate;
+            }
         } else {
             return raw_estimate;
         }
     } else {
-        return raw_estimate;
+        is_first_chunk = 0;
+        return -1.0;
     }
 }
 

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "hllpp_omp.h"
 
@@ -17,30 +18,31 @@ struct result {
     double time_spent_one_thread;
 };
 
-static void calc(struct result *res, uint32_t *arr, size_t n, uint8_t b,
-    uint32_t cnt, uint8_t n_threads);
 static void print_results(const struct result *res, uint8_t p, uint8_t b,
-    uint8_t run, uint8_t n_threads, FILE *fptr, uint8_t specified_n_threads, uint8_t first_call);
+    uint8_t run, uint8_t n_threads, FILE *fptr, uint8_t first_call);
 
 int main(int argc, char *argv[])
 {
     static const unsigned seed = 1;
-    static const char *filename = "results_omp.csv";
 
     static uint8_t p = 27; // Cardinality of elements 2^p , p -> [4..30]
     static uint8_t b = 14; // Cardinality of registers 2^b , b -> [4..16]
+    static uint32_t u = 128; // Size of buffer in MiBs
     static uint8_t runs = 1;
     static uint8_t n_threads = 0;
 
     // Parse command line options
     static int c;
-    while ((c = getopt(argc, argv, "p:b:r:t:")) != -1)
+    while ((c = getopt(argc, argv, "p:b:u:r:t:")) != -1)
         switch (c) {
         case 'p':
             p = strtoul(optarg, NULL, 10);
             break;
         case 'b':
             b = strtoul(optarg, NULL, 10);
+            break;
+        case 'u':
+            u = strtoul(optarg, NULL, 10);
             break;
         case 'r':
             runs = strtoul(optarg, NULL, 10);
@@ -52,6 +54,9 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
+    static char filename[80];
+    snprintf(filename, 80, "results_omp-p%u-b%u.csv", p, b);
+
     uint8_t max_threads = omp_get_num_procs();
 
     FILE *fptr = fopen(filename, "w");
@@ -60,81 +65,92 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    const size_t n = 1UL << p;
-
-    uint32_t *arr = malloc(sizeof *arr * n);
-    if (arr == NULL) {
-        fprintf(stderr, "Fatal: failed to allocate memory.\n");
-        return EXIT_FAILURE;
-    }
-
-    // Fill array with random integers
-    const uint32_t mask = 1UL * n + (n - 1UL);
-    srand(seed);
-
-    for (size_t i = 0; i < n; ++i) {
-        arr[i] = rand() & mask;
-    }
-    printf("Array of length %zu filled with integers from [0 .. %u].\n", n, mask);
-
     // Distinct precalculated counts for p [0..30], seed = 1, mask = 1UL * n + (n - 1UL)
-    size_t cnts[] = { 1, 2, 4, 8, 14, 25, 50, 104, 206, 394, 800, 1609,
+    static const size_t cnts[] = { 1, 2, 4, 8, 14, 25, 50, 104, 206, 394, 800, 1609,
         3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900,
         1650602, 3300462, 6601586, 13202252, 26403875, 52807680, 105621810,
         211235547, 422476956, 844963071 };
 
-    size_t cnt = cnts[p];
+    const size_t cnt = cnts[p];
+
+    const size_t n = 1UL << p;
+
+    const uint32_t mask = 1UL * n + (n - 1UL);
 
     // Print distinct elements number of array
     printf("Number of distinct elements: %zu\n", cnt);
     printf("Percentage: %.3f\n", cnt * 100.0 / n);
 
+    size_t buf_length = (1UL << 20) * u / sizeof(uint32_t);
+    uint32_t *buf = malloc(sizeof *buf * buf_length);
+    if (buf == NULL) {
+        fprintf(stderr, "Fatal: failed to allocate memory.\n");
+        return EXIT_FAILURE;
+    }
+
     struct result res;
+    res.estimate = -1.0;
     res.time_spent_one_thread = -1.0;
 
     // Find approximation of distinct items with HyperLogLog++ using OpenMP
     printf("\nHyperLogLog++ using OpenMP\n");
     uint8_t first_call_to_print = 1;
+    size_t last_chunk_size = n % buf_length;
+    size_t chunks = n / buf_length;
+    if (last_chunk_size != 0) {
+        chunks++;
+    }
+
     for (uint8_t r = 1; r <= runs; ++r) {
-        uint8_t current_thread = 1;
-        uint8_t specified_n_threads = 0;
+        uint8_t current_n_threads = 1;
         if (n_threads != 0) {
-            specified_n_threads = 1;
-            current_thread = n_threads;
+            current_n_threads = n_threads;
             max_threads = n_threads;
         }
-        for (; current_thread <= max_threads; ++current_thread) {
-            printf("\nRun %u, using %u thread(s).\n", r, current_thread);
+        for (; current_n_threads <= max_threads; ++current_n_threads) {
+            printf("\nRun %u, using %u thread(s).\n", r, current_n_threads);
 
-            calc(&res, arr, n, b, cnt, current_thread);
-            print_results(&res, p, b, r, current_thread, fptr, specified_n_threads, first_call_to_print);
+            srand(seed);
+            uint8_t end_of_buffer = 0;
+            res.time_spent = 0.0;
+
+            for (size_t i = 0; i < chunks; ++i) {
+                size_t chunk_size = buf_length;
+                if (i == chunks - 1) {
+                    end_of_buffer = 1;
+                    if (last_chunk_size != 0) {
+                        chunk_size = last_chunk_size;
+                    }
+                }
+                for (size_t j = 0; j < chunk_size; ++j) {
+                    buf[j] = rand() & mask;
+                }
+
+                double begin = omp_get_wtime();
+
+                res.estimate = hllpp_omp(buf, chunk_size, end_of_buffer, b, current_n_threads);
+
+                double end = omp_get_wtime();
+                res.time_spent += end - begin;
+                if (current_n_threads == 1) {
+                    res.time_spent_one_thread = res.time_spent;
+                }
+            }
+            res.perc_error = ABS((cnt - res.estimate) * 100 / cnt);
+
+            print_results(&res, p, b, r, current_n_threads, fptr, first_call_to_print);
             first_call_to_print = 0;
         }
     }
 
     fclose(fptr);
-    free(arr);
+    free(buf);
 
     return 0;
 }
 
-static void calc(struct result *res, uint32_t *arr, size_t n, uint8_t b,
-    uint32_t cnt, uint8_t n_threads)
-{
-    double begin = omp_get_wtime();
-
-    res->estimate = hllpp_omp(arr, n, b, n_threads);
-
-    double end = omp_get_wtime();
-
-    res->time_spent = end - begin;
-    if (n_threads == 1)
-        res->time_spent_one_thread = res->time_spent;
-    res->perc_error = ABS((cnt - res->estimate) * 100 / cnt);
-}
-
 static void print_results(const struct result *res, uint8_t p, uint8_t b,
-    uint8_t run, uint8_t n_threads, FILE *fptr, uint8_t specified_n_threads, uint8_t first_call)
+    uint8_t run, uint8_t n_threads, FILE *fptr, uint8_t first_call)
 {
 
     printf("Estimate: %f\n", res->estimate);
@@ -142,7 +158,7 @@ static void print_results(const struct result *res, uint8_t p, uint8_t b,
     printf("Time in seconds: %.3f\n", res->time_spent);
     // If number of threads is specified, don't calculate and print
     // speedup and efficiency since there is no baseline
-    if (specified_n_threads != 1) {
+    if (n_threads == 0) {
         double speedup = res->time_spent_one_thread / res->time_spent;
         double efficiency = speedup / n_threads;
         printf("Speedup: %.3f\n", speedup);
