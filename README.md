@@ -2,14 +2,16 @@
 ## Description
 Fills an array of 32-bit unsigned integers with random values (about 78% of them are distinct). It then approximates their precalculated distinct count by using an implementation of the HyperLogLog++ algorithm (Heule et al. 2013) (without the bias corrections) using 64-bit hashes produced by [xxHash](https://github.com/Cyan4973/xxHash).
 ## Usage
-Build with `make`, then `./bin/hllpp_omp [-p ...] [-b ...] [-u ...] [-r ...] [-t ...]`, where:
+Build with `make` then `./bin/hllpp_omp [-p ...] [-b ...] [-u ...] [-r ...] [-t ...]`
+
+, where:
 * 2^**p** is the length of the array (default: 27 = 134217728 32-bit integers occupying 512MiB) 
 * 2^**b** [4..16] the number of 8-bit "registers" the algorithm will use (default: 14 = 16384 registers)
-* **u** is the size of the buffer that will be used (default: 256 = 256 MiBs)
-* **r** the number of times the algorithm will run 
+* **u** is the size of the buffer in MiBs that will be used (default: 256)
+* **r** the number of times the algorithm will run (default: 1)
 * **t** the specific number of threads to be used (default: 0 = 1 up to omp_get_num_procs() threads)
 
-The count of distinct numbers has been precalculated for **p** = [0..30].
+The count of distinct numbers has been precalculated for **p** = 0 up to 30.
 ## Results 
 ### OpenMP - AMD FX-8350 4.0GHz / Xubuntu 16.04 64bit / gcc 5.4.0 (with -O3 optimizations)
 Options used: b = 14 (16384 registers)
