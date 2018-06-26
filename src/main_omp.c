@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
     // If n_threads is set to 0 apply algorithms using
     // 1 up to omp_get_num_procs() threads
     static uint8_t n_threads = 0;
+    uint8_t max_threads = omp_get_num_procs();
 
     // Parse command line options
     static int c;
@@ -57,10 +58,9 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
+    // Name of file to write results to
     static char filename[80];
     snprintf(filename, 80, "results_omp-p%u-b%u.csv", p, b);
-
-    uint8_t max_threads = omp_get_num_procs();
 
     FILE *fptr = fopen(filename, "w");
     if (fptr == NULL) {
@@ -68,17 +68,19 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    // Number of random integers to generate
+    const size_t n = 1UL << p;
+    // Mask used for controlling the range of
+    // the values of the random integers
+    const uint32_t mask = 1UL * n + (n - 1UL);
+
     // Distinct precalculated counts for p [0..30], seed = 1, mask = 1UL * n + (n - 1UL)
     static const size_t cnts[] = { 1, 2, 4, 8, 14, 25, 50, 104, 206, 394, 800, 1609,
         3194, 6434, 12852, 25733, 51567, 103075, 206331, 412503, 825900,
         1650602, 3300462, 6601586, 13202252, 26403875, 52807680, 105621810,
         211235547, 422476956, 844963071 };
-
+    // Real distinct count
     const size_t cnt = cnts[p];
-
-    const size_t n = 1UL << p;
-
-    const uint32_t mask = 1UL * n + (n - 1UL);
 
     // Print the number of the distinct elements of array
     printf("Number of distinct elements: %zu\n", cnt);
@@ -95,6 +97,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    // Results struct
     struct result res;
     res.estimate = -1.0;
     res.time_spent_one_thread = -1.0;
