@@ -14,7 +14,7 @@ Build with `make` then `./bin/hllpp_omp [-p ...] [-b ...] [-u ...] [-r ...] [-t 
 The count of distinct numbers has been precalculated for **p** = 0 up to 30.
 ## Results 
 ### OpenMP - AMD FX-8350 4.0GHz / Xubuntu 16.04 64bit / gcc 5.4.0 (with -O3 optimizations)
-Options used: b = 14 (16384 registers)
+Options used: **b** = 14 (16384 registers), **r** = 20 runs
 
 Time values were calculated as the interquartile mean (IQM) of the timings taken from 20 runs for each array length.
 
