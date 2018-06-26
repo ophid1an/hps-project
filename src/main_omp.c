@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     static uint32_t u = 256; // Size of buffer in MiBs
     static uint8_t runs = 1;
     // If n_threads is set to 0 apply algorithms using
-    // 1 up to omp_get_num_procs()
+    // 1 up to omp_get_num_procs() threads
     static uint8_t n_threads = 0;
 
     // Parse command line options
