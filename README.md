@@ -1,6 +1,6 @@
 # Parallel implementation of the HyperLogLog++ algorithm
 ## Description
-Fills an array of 32-bit unsigned integers with random values (about 78% of them are distinct). It then approximates their precalculated distinct count by using an implementation of the HyperLogLog++ algorithm (Heule et al. 2013) (without the bias corrections) using 64-bit hashes produced by [xxHash](https://github.com/Cyan4973/xxHash).
+The program fills an array of 32-bit unsigned integers with random values (about 78% of them are distinct). It then approximates their precalculated distinct count by using an implementation of the HyperLogLog++ algorithm (Heule et al. 2013) (without the bias corrections) using 64-bit hashes produced by [xxHash](https://github.com/Cyan4973/xxHash).
 ## Usage
 Build with `make` then `./bin/hllpp_omp [-p ...] [-b ...] [-u ...] [-r ...] [-t ...]`
 
