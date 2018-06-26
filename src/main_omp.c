@@ -108,14 +108,14 @@ int main(int argc, char *argv[])
         chunks++;
     }
 
-    for (uint8_t r = 1; r <= runs; ++r) {
+    for (uint8_t run = 1; run <= runs; ++run) {
         uint8_t current_n_threads = 1;
         if (n_threads != 0) {
             current_n_threads = n_threads;
             max_threads = n_threads;
         }
         for (; current_n_threads <= max_threads; ++current_n_threads) {
-            printf("\nRun %u, using %u thread(s).\n", r, current_n_threads);
+            printf("\nRun %u, using %u thread(s).\n", run, current_n_threads);
 
             srand(seed);
             uint8_t end_of_buffer = 0;
@@ -129,8 +129,13 @@ int main(int argc, char *argv[])
                         chunk_size = last_chunk_size;
                     }
                 }
-                for (size_t j = 0; j < chunk_size; ++j) {
-                    buf[j] = rand() & mask;
+
+                // Fill chunk with random 32bit integers thoughtfully
+                // (only when needed)
+                if (chunks != 1 || (run == 1 && (current_n_threads == 1 || n_threads != 0))) {
+                    for (size_t j = 0; j < chunk_size; ++j) {
+                        buf[j] = rand() & mask;
+                    }
                 }
 
                 double begin = omp_get_wtime();
@@ -145,7 +150,7 @@ int main(int argc, char *argv[])
             }
             res.perc_error = ABS((cnt - res.estimate) * 100 / cnt);
 
-            print_results(&res, p, b, r, n_threads, current_n_threads, fptr, first_call_to_print);
+            print_results(&res, p, b, run, n_threads, current_n_threads, fptr, first_call_to_print);
             first_call_to_print = 0;
         }
     }
