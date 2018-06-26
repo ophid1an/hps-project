@@ -21,7 +21,7 @@ if len(arr_lengths) * runs * threads != data.shape[0]:
     sys.exit(1)
 
 data_converted = pd.DataFrame(
-    columns=list(data.drop(labels=['Registers', 'Seed', 'Run'], axis=1).columns) + ['Speedup', 'Efficiency'])
+    columns=list(data.drop(labels=['Registers', 'Run'], axis=1).columns) + ['Speedup', 'Efficiency'])
 
 for arr_len in arr_lengths:
     for thread in range(1, threads + 1):
