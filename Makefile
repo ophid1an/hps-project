@@ -13,6 +13,9 @@ SRC_OMP = $(patsubst %,$(SRCDIR)/%,$(_SRC_OMP))
 _SRC_MPI = main_mpi.c hllpp_mpi.c xxhash.c
 SRC_MPI = $(patsubst %,$(SRCDIR)/%,$(_SRC_MPI))
 
+.PHONY: all
+all: hllpp_omp hllpp_mpi
+
 hllpp_omp: $(SRC_OMP)
 	$(CC) -o $(BINDIR)/$@ $^ $(CFLAGS) $(LIBS_OMP)
 
