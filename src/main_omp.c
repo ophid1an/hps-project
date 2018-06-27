@@ -20,7 +20,7 @@ struct result {
 };
 
 static void print_results(const struct result *res, uint8_t p, uint8_t b,
-    uint8_t run, uint8_t n_threads, uint8_t current_n_threads, FILE *fptr, uint8_t first_call);
+    uint8_t run, uint8_t fixed_threads, uint8_t current_n_threads, FILE *fptr, uint8_t first_call);
 
 int main(int argc, char *argv[])
 {
@@ -30,9 +30,9 @@ int main(int argc, char *argv[])
     static uint8_t b = 14; // Cardinality of registers 2^b , b -> [4..16]
     static uint32_t u = 256; // Size of buffer in MiBs
     static uint8_t runs = 1;
-    // If n_threads is set to 0 apply algorithms using
+    // If fixed_threads is set to 0 apply algorithms using
     // 1 up to omp_get_num_procs() threads
-    static uint8_t n_threads = 0;
+    static uint8_t fixed_threads = 0;
     uint8_t max_threads = omp_get_num_procs();
 
     // Parse command line options
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
             runs = strtoul(optarg, NULL, 10);
             break;
         case 't':
-            n_threads = strtoul(optarg, NULL, 10);
+            fixed_threads = strtoul(optarg, NULL, 10);
             break;
         default:
             return EXIT_FAILURE;
@@ -113,9 +113,9 @@ int main(int argc, char *argv[])
 
     for (uint8_t run = 1; run <= runs; ++run) {
         uint8_t current_n_threads = 1;
-        if (n_threads != 0) {
-            current_n_threads = n_threads;
-            max_threads = n_threads;
+        if (fixed_threads != 0) {
+            current_n_threads = fixed_threads;
+            max_threads = fixed_threads;
         }
         for (; current_n_threads <= max_threads; ++current_n_threads) {
             printf("\nRun %u, using %u thread(s).\n", run, current_n_threads);
@@ -133,9 +133,9 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                // Fill chunk with random 32bit integers thoughtfully
+                // Fill buffer with random 32bit integers thoughtfully
                 // (only when needed)
-                if (chunks != 1 || (run == 1 && (current_n_threads == 1 || n_threads != 0))) {
+                if (chunks != 1 || (run == 1 && (current_n_threads == 1 || fixed_threads != 0))) {
                     for (size_t j = 0; j < chunk_size; ++j) {
                         buf[j] = rand() & mask;
                     }
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
             }
             res.perc_error = ABS((cnt - res.estimate) * 100 / cnt);
 
-            print_results(&res, p, b, run, n_threads, current_n_threads, fptr, first_call_to_print);
+            print_results(&res, p, b, run, fixed_threads, current_n_threads, fptr, first_call_to_print);
             first_call_to_print = 0;
         }
     }
@@ -165,15 +165,15 @@ int main(int argc, char *argv[])
 }
 
 static void print_results(const struct result *res, uint8_t p, uint8_t b,
-    uint8_t run, uint8_t n_threads, uint8_t current_n_threads, FILE *fptr, uint8_t first_call)
+    uint8_t run, uint8_t fixed_threads, uint8_t current_n_threads, FILE *fptr, uint8_t first_call)
 {
 
     printf("Estimate: %f\n", res->estimate);
     printf("Percent error: %.3f\n", res->perc_error);
     printf("Time in seconds: %.3f\n", res->time_spent);
-    // If number of threads is specified, don't calculate and print
+    // If number of threads is fixed, don't calculate and print
     // speedup and efficiency since there is no baseline
-    if (n_threads == 0) {
+    if (fixed_threads == 0) {
         double speedup = res->time_spent_one_thread / res->time_spent;
         double efficiency = speedup / current_n_threads;
         printf("Speedup: %.3f\n", speedup);
