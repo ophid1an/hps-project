@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-double hllpp_mpi(uint32_t *arr, size_t n, uint8_t end_of_buffer,
-    uint8_t b);
+void hllpp_mpi(uint8_t b, uint8_t *registers,
+    size_t m, uint32_t *arr, size_t n);
 
 #endif

@@ -5,11 +5,11 @@ The program fills an array of 32-bit unsigned integers with random values (about
 Build with `make` then `./bin/hllpp_omp [-p ...] [-b ...] [-u ...] [-r ...] [-t ...]`
 
 , where:
-* 2^**p** is the length of the array (default: 27 = 134217728 32-bit integers occupying 512MiB) 
-* 2^**b** [4..16] the number of 8-bit "registers" the algorithm will use (default: 14 = 16384 registers)
+* 2^**p** is the length of the array (default: 27 = 134217728 32-bit integers occupying 512 MiB) 
+* 2^**b** [4..16] is the number of 8-bit "registers" the algorithm will use (default: 14 = 16384 registers)
 * **u** is the size of the buffer in MiBs that will be used (default: 256)
-* **r** the number of times the algorithm will run (default: 1)
-* **t** the specific number of threads to be used (default: 0 = 1 up to omp_get_num_procs() threads)
+* **r** is the number of times the algorithm will run (default: 1)
+* **t** is the specific number of threads to be used (default: 0 = 1 up to omp_get_num_procs() threads)
 
 The count of distinct numbers has been precalculated for **p** = 0 up to 30.
 ## Results 
