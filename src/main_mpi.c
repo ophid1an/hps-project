@@ -1,6 +1,5 @@
 #include <float.h>
 #include <getopt.h>
-#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -20,7 +19,6 @@ struct result {
     double time_spent_one_thread;
 };
 
-static double calc_estimate(uint8_t *registers, size_t m);
 static void print_results(const struct result *res, uint8_t p, uint8_t b,
     uint8_t run, uint8_t current_n_tasks, FILE *fptr, uint8_t first_call);
 
@@ -211,7 +209,7 @@ int main(int argc, char *argv[])
             MPI_Scatter(buf, arr_length, MPI_UINT32_T, arr, arr_length, MPI_UINT32_T, root, MPI_COMM_WORLD);
 
             // Calculate registers' values
-            hllpp_mpi(b, registers, m, arr, arr_length);
+            calc_registers(b, registers, arr, arr_length);
 
             // Reduce registers from all tasks to
             MPI_Reduce(registers, registers, m, MPI_UINT8_T, MPI_MAX, root, MPI_COMM_WORLD);
@@ -239,41 +237,6 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     return 0;
-}
-
-static double calc_estimate(uint8_t *registers, size_t m)
-{
-    double a = 0.0;
-
-    if (m >= 128) {
-        a = 0.7213 / (1.0 + 1.079 / m);
-    } else if (m == 64) {
-        a = 0.709;
-    } else if (m == 32) {
-        a = 0.697;
-    } else if (m == 16) {
-        a = 0.673;
-    }
-
-    uint32_t zero_registers_card = m;
-    double sum_of_inverses = 0.0;
-    for (size_t i = 0; i < m; i++) {
-        if (registers[i] != 0)
-            --zero_registers_card;
-        sum_of_inverses += 1 / pow(2.0, registers[i]);
-    }
-
-    double raw_estimate = a * m * m / sum_of_inverses;
-
-    if (raw_estimate <= 5 * m) {
-        if (zero_registers_card) {
-            return m * log((double)m / zero_registers_card);
-        } else {
-            return raw_estimate;
-        }
-    } else {
-        return raw_estimate;
-    }
 }
 
 static void print_results(const struct result *res, uint8_t p, uint8_t b,
