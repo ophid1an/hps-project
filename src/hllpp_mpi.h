@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void calc_registers(uint8_t b, uint8_t *registers,
+void calc_registers(uint8_t *registers, uint8_t b,
     uint32_t *arr, size_t n);
 
 double calc_estimate(uint8_t *registers, size_t m);

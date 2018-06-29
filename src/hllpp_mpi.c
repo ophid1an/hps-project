@@ -10,7 +10,7 @@
 
 static uint8_t find_leftmost_one_position(uint64_t a, uint8_t offset);
 
-void calc_registers(uint8_t b, uint8_t *registers,
+void calc_registers(uint8_t *registers, uint8_t b,
     uint32_t *arr, size_t n)
 {
     static const size_t arr_elem_len = sizeof *arr;

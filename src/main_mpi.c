@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
             MPI_Scatter(buf, arr_length, MPI_UINT32_T, arr, arr_length, MPI_UINT32_T, root, MPI_COMM_WORLD);
 
             // Calculate registers' values
-            calc_registers(b, registers, arr, arr_length);
+            calc_registers(registers, b, arr, arr_length);
 
             // Reduce registers from all tasks to
             MPI_Reduce(registers, registers, m, MPI_UINT8_T, MPI_MAX, root, MPI_COMM_WORLD);
