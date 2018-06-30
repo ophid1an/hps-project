@@ -43,7 +43,14 @@ int main(int argc, char *argv[])
     uint32_t mask = 0;
     uint8_t *root_registers = NULL;
 
-    size_t last_chunk_size = 0;
+    uint32_t *root_buf = NULL;
+    size_t root_buf_length = 0;
+
+    size_t root_chunk_length = 0;
+    size_t root_last_chunk_length = 0;
+
+    // Displacements array for MPI_Scatterv()
+    int *displs = NULL;
 
     FILE *fptr = NULL;
     uint8_t first_call_to_print = 0;
@@ -60,8 +67,14 @@ int main(int argc, char *argv[])
     uint8_t *registers = NULL;
     uint32_t *buf = NULL;
     size_t buf_length = 0;
-    size_t chunks = 0; // Number of chunks
-    size_t chunk_size = 0;
+
+    // Number of chunks for root buffer
+    size_t root_chunks = 0;
+
+    // Chunks sizes array for MPI_Scatterv()
+    int *chunks_lengths = NULL;
+    size_t chunks = 0;
+    size_t last_chunk_length = 0;
 
     // MPI initialization
     MPI_Init(&argc, &argv);
@@ -103,38 +116,34 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        // Set buffer length equal to the minimum of
-        // the ceiling(specified size / numtasks)
-        // and the integer array size
-        size_t buf_length_total = (1UL << 20) * u / sizeof(uint32_t);
-        buf_length = buf_length_total / numtasks;
-        if (buf_length_total % numtasks != 0) {
-            ++buf_length;
+        // Set root buffer length equal to the minimum of
+        // the ** half ** specified size and the integer array size
+        root_buf_length = (1UL << 19) * u / sizeof(uint32_t);
+        root_buf_length = MIN(root_buf_length, n);
+
+        // Allocate space for root buffer
+        root_buf = malloc(sizeof *root_buf * root_buf_length);
+        if (root_buf == NULL) {
+            fprintf(stderr, "Fatal: failed to allocate memory.\n");
+            MPI_Finalize();
+            return EXIT_FAILURE;
         }
-        buf_length = MIN(buf_length, n);
-    }
 
-    // Broadcast m and buf_length
-    MPI_Bcast(&m, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
-    MPI_Bcast(&buf_length, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+        // Calculate number of needed chunks and size of last chunk
+        root_chunks = n / root_buf_length;
+        root_last_chunk_length = root_buf_length;
+        if (n % root_buf_length != 0) {
+            ++root_chunks;
+            root_last_chunk_length = n % root_buf_length;
+        }
 
-    // In each task allocate space for registers
-    registers = malloc(sizeof *registers * m);
-    if (registers == NULL) {
-        fprintf(stderr, "Fatal: failed to allocate memory.\n");
-        MPI_Finalize();
-        return EXIT_FAILURE;
-    }
+        // Calculate maximum length of buffer for each task
+        // (root_buf_length / numtasks)
+        buf_length = root_buf_length / numtasks;
+        if (root_buf_length % numtasks != 0) {
+            buf_length++;
+        }
 
-    // In each task allocate space for buffer
-    buf = malloc(sizeof *buf * buf_length);
-    if (buf == NULL) {
-        fprintf(stderr, "Fatal: failed to allocate memory.\n");
-        MPI_Finalize();
-        return EXIT_FAILURE;
-    }
-
-    if (taskid == root) {
         // Name of file to write results to
         static char filename[80];
         snprintf(filename, 80, "results_mpi-p%u-b%u.csv", p, b);
@@ -162,16 +171,29 @@ int main(int argc, char *argv[])
         // Find approximation of distinct items with HyperLogLog++ using Open MPI
         printf("\nHyperLogLog++ using Open MPI\n");
         first_call_to_print = 1;
-        last_chunk_size = n % buf_length;
-        chunks = n / buf_length;
-        if (last_chunk_size != 0) {
-            ++chunks;
-        }
     }
 
-    // Broadcast runs and chunks
+    // Broadcast variables needed for each task
+    MPI_Bcast(&m, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+    MPI_Bcast(&buf_length, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
     MPI_Bcast(&runs, 1, MPI_UINT32_T, root, MPI_COMM_WORLD);
-    MPI_Bcast(&chunks, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+    MPI_Bcast(&root_chunks, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+
+    // In each task allocate space for registers
+    registers = malloc(sizeof *registers * m);
+    if (registers == NULL) {
+        fprintf(stderr, "Fatal: failed to allocate memory.\n");
+        MPI_Finalize();
+        return EXIT_FAILURE;
+    }
+
+    // In each task allocate space for buffer
+    buf = malloc(sizeof *buf * buf_length);
+    if (buf == NULL) {
+        fprintf(stderr, "Fatal: failed to allocate memory.\n");
+        MPI_Finalize();
+        return EXIT_FAILURE;
+    }
 
     for (uint8_t run = 1; run <= runs; ++run) {
         // Zero registers
@@ -188,42 +210,82 @@ int main(int argc, char *argv[])
             printf("\nRun %u, using %d task(s).\n", run, numtasks);
 
             srand(seed);
-            // uint8_t end_of_buffer = 0;
         }
 
-        for (size_t i = 0; i < chunks; ++i) {
+        for (size_t i = 0; i < root_chunks; ++i) {
             if (taskid == root) {
-                chunk_size = buf_length;
-                if (i == chunks - 1) {
-                    // end_of_buffer = 1;
-                    if (last_chunk_size != 0) {
-                        chunk_size = last_chunk_size;
+                root_chunk_length = root_buf_length;
+
+                if (i == root_chunks - 1) {
+                    root_chunk_length = root_last_chunk_length;
+                }
+
+                // Fill root buffer with random 32bit integers thoughtfully
+                // (only when needed)
+                if (run == 1 || root_chunks != 1) {
+                    // printf("\nFilling chunk: %zu/%zu ... \n", i + 1, root_chunks);
+                    for (size_t j = 0; j < root_chunk_length; ++j) {
+                        root_buf[j] = rand() & mask;
                     }
                 }
 
-                // Fill buffer with random 32bit integers thoughtfully
-                // (only when needed)
-                if (run == 1 || chunks != 1) {
-                    // printf("\n Filling buffer... \n");
-                    for (size_t j = 0; j < chunk_size; ++j) {
-                        buf[j] = rand() & mask;
-                    }
+                /*** 
+                 * For each root buffer chunk, calculate 
+                 * chunks sizes array and displacements array 
+                 * to be used in MPI_Scatterv()
+                ***/
+
+                chunks = root_chunk_length / buf_length;
+                last_chunk_length = buf_length;
+                if (root_chunk_length % buf_length != 0) {
+                    ++chunks;
+                    last_chunk_length = root_chunk_length % buf_length;
+                }
+            }
+
+            // Broadcast chunks and last chunk size
+            MPI_Bcast(&chunks, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+            MPI_Bcast(&last_chunk_length, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+
+            // Allocate space for chunks sizes array
+            chunks_lengths = malloc(sizeof *chunks_lengths * chunks);
+            if (chunks_lengths == NULL) {
+                fprintf(stderr, "Fatal: failed to allocate memory.\n");
+                MPI_Finalize();
+                return EXIT_FAILURE;
+            }
+
+            // Populate chunks sizes array
+            for (size_t i = 0; i < chunks; ++i) {
+                chunks_lengths[i] = buf_length;
+                if (i == chunks - 1) {
+                    chunks_lengths[i] = last_chunk_length;
+                }
+            }
+
+            if (taskid == root) {
+                // Allocate space for displacements_array
+                displs = malloc(sizeof *displs * chunks);
+                if (displs == NULL) {
+                    fprintf(stderr, "Fatal: failed to allocate memory.\n");
+                    MPI_Finalize();
+                    return EXIT_FAILURE;
+                }
+
+                // Populate displacements_array
+                displs[0] = 0;
+                for (size_t i = 1; i < chunks; ++i) {
+                    displs[i] = displs[i - 1] + chunks_lengths[i - 1];
                 }
 
                 begin = MPI_Wtime();
             }
 
-            // Scatter the buffer of root to all tasks
-            // Broadcast the buff to all tasks;
-            MPI_Bcast(buf, buf_length, MPI_UINT32_T, root, MPI_COMM_WORLD);
-            // MPI_Scatter(buf, chunk_size, MPI_UINT32_T, arr, chunk_size, MPI_UINT32_T, root, MPI_COMM_WORLD);
-            // MPI_Barrier(MPI_COMM_WORLD);
-
-            // Broadcast chunk size
-            MPI_Bcast(&chunk_size, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+            // Scatter the root buffer to all tasks
+            MPI_Scatterv(root_buf, chunks_lengths, displs, MPI_UINT32_T, buf, chunks_lengths[taskid], MPI_UINT32_T, root, MPI_COMM_WORLD);
 
             // Calculate registers' values
-            calc_registers(registers, b, buf, chunk_size, numtasks, taskid);
+            calc_registers(registers, b, buf, chunks_lengths[taskid]);
 
             // Reduce registers from all tasks to
             MPI_Reduce(registers, root_registers, m, MPI_UINT8_T, MPI_MAX, root, MPI_COMM_WORLD);
@@ -233,17 +295,16 @@ int main(int argc, char *argv[])
 
                 double end = MPI_Wtime();
                 res.time_spent += end - begin;
-                // if (current_n_tasks == 1) {
-                //     res.time_spent_one_thread = res.time_spent;
-                // }
                 res.perc_error = ABS((cnt - res.estimate) * 100 / cnt);
 
-                if (i == chunks - 1) {
+                if (i == root_chunks - 1) {
                     print_results(&res);
                     write_results(&res, p, b, run, numtasks, fptr, first_call_to_print);
                     first_call_to_print = 0;
                 }
             }
+
+            free(chunks_lengths);
         }
     }
 
@@ -274,8 +335,4 @@ static void print_results(const struct result *res)
     printf("Estimate: %f\n", res->estimate);
     printf("Percent error: %.3f\n", res->perc_error);
     printf("Time in seconds: %.3f\n", res->time_spent);
-    // double speedup = res->time_spent_one_thread / res->time_spent;
-    // double efficiency = speedup / current_n_tasks;
-    // printf("Speedup: %.3f\n", speedup);
-    // printf("Efficiency: %.3f\n", efficiency);
 }

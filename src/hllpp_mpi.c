@@ -11,22 +11,12 @@
 static uint8_t find_leftmost_one_position(uint64_t a, uint8_t offset);
 
 void calc_registers(uint8_t *registers, uint8_t b,
-    uint32_t *arr, size_t n, int numtasks, int taskid)
+    uint32_t *arr, size_t n)
 {
     static const size_t arr_elem_len = sizeof *arr;
     size_t hash_mask = sizeof(uint64_t) * CHAR_BIT - b;
 
-    size_t chunk_size = n / numtasks;
-    size_t start_offset = chunk_size * taskid;
-    size_t end_offset = start_offset + chunk_size;
-    if (taskid == numtasks - 1) {
-        end_offset += n % numtasks;
-    }
-
-    // printf("\nNumtasks: %d, taskid: %d\n", numtasks, taskid);
-    // printf("Chunk size: %zu, Start: %zu, End: %zu\n", chunk_size, start_offset, end_offset);
-
-    for (size_t i = start_offset; i < end_offset; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         uint64_t hashed = XXH64(arr + i, arr_elem_len, 0ULL);
         uint16_t reg_id = hashed >> hash_mask;
         uint64_t w = hashed & (UINT64_MAX >> b);
