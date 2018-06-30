@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     // Number of chunks for root buffer
     size_t root_chunks = 0;
 
-    // Chunks sizes array for MPI_Scatterv()
+    // Chunks lengths array for MPI_Scatterv()
     int *chunks_lengths = NULL;
     size_t last_chunk_length = 0;
 
@@ -116,7 +116,8 @@ int main(int argc, char *argv[])
         }
 
         // Set root buffer length equal to the minimum of
-        // the ** half ** specified size and the integer array size
+        // the ** half ** specified buffer length and
+        // the integer array length
         root_buf_length = (1UL << 19) * u / sizeof(uint32_t);
         root_buf_length = MIN(root_buf_length, n);
 
@@ -128,7 +129,7 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
 
-        // Calculate number of needed chunks and size of last chunk
+        // Calculate number of needed chunks and length of last chunk
         root_chunks = n / root_buf_length;
         root_last_chunk_length = root_buf_length;
         if (n % root_buf_length != 0) {
@@ -228,21 +229,22 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                /*** 
-                 * For each root buffer chunk, calculate 
-                 * chunks sizes array and displacements array 
-                 * to be used in MPI_Scatterv()
-                ***/
-
                 last_chunk_length = root_chunk_length % buf_length == 0
                     ? buf_length
                     : root_chunk_length % buf_length;
             }
 
-            // Broadcast last chunk size
+            // Broadcast last chunk length
             MPI_Bcast(&last_chunk_length, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
 
-            // Allocate space for chunks sizes array
+            /*** 
+             * For each root buffer chunk, calculate 
+             * chunks lengths array for all tasks 
+             * and displacements array for root task
+             * to be used in MPI_Scatterv()
+            ***/
+
+            // Allocate space for chunks lengths array
             chunks_lengths = malloc(sizeof *chunks_lengths * numtasks);
             if (chunks_lengths == NULL) {
                 fprintf(stderr, "Fatal: failed to allocate memory.\n");
@@ -250,7 +252,7 @@ int main(int argc, char *argv[])
                 return EXIT_FAILURE;
             }
 
-            // Populate chunks sizes array
+            // Populate chunks lengths array
             for (size_t i = 0; i < (size_t)numtasks; ++i) {
                 chunks_lengths[i] = buf_length;
                 if (i == (size_t)numtasks - 1) {
