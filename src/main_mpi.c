@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 
         // Name of file to write results to
         static char filename[80];
-        snprintf(filename, 80, "results_mpi-p%u-b%u.csv", p, b);
+        snprintf(filename, 80, "results_mpi-p%u-b%u-t%d.csv", p, b, numtasks);
 
         fptr = fopen(filename, "w");
         if (fptr == NULL) {
