@@ -73,7 +73,6 @@ int main(int argc, char *argv[])
 
     // Chunks sizes array for MPI_Scatterv()
     int *chunks_lengths = NULL;
-    size_t chunks = 0;
     size_t last_chunk_length = 0;
 
     // MPI initialization
@@ -235,20 +234,16 @@ int main(int argc, char *argv[])
                  * to be used in MPI_Scatterv()
                 ***/
 
-                chunks = root_chunk_length / buf_length;
-                last_chunk_length = buf_length;
-                if (root_chunk_length % buf_length != 0) {
-                    ++chunks;
-                    last_chunk_length = root_chunk_length % buf_length;
-                }
+                last_chunk_length = root_chunk_length % buf_length == 0
+                    ? buf_length
+                    : root_chunk_length % buf_length;
             }
 
-            // Broadcast chunks and last chunk size
-            MPI_Bcast(&chunks, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+            // Broadcast last chunk size
             MPI_Bcast(&last_chunk_length, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
 
             // Allocate space for chunks sizes array
-            chunks_lengths = malloc(sizeof *chunks_lengths * chunks);
+            chunks_lengths = malloc(sizeof *chunks_lengths * numtasks);
             if (chunks_lengths == NULL) {
                 fprintf(stderr, "Fatal: failed to allocate memory.\n");
                 MPI_Finalize();
@@ -256,16 +251,16 @@ int main(int argc, char *argv[])
             }
 
             // Populate chunks sizes array
-            for (size_t i = 0; i < chunks; ++i) {
+            for (size_t i = 0; i < (size_t)numtasks; ++i) {
                 chunks_lengths[i] = buf_length;
-                if (i == chunks - 1) {
+                if (i == (size_t)numtasks - 1) {
                     chunks_lengths[i] = last_chunk_length;
                 }
             }
 
             if (taskid == root) {
                 // Allocate space for displacements_array
-                displs = malloc(sizeof *displs * chunks);
+                displs = malloc(sizeof *displs * numtasks);
                 if (displs == NULL) {
                     fprintf(stderr, "Fatal: failed to allocate memory.\n");
                     MPI_Finalize();
@@ -274,7 +269,7 @@ int main(int argc, char *argv[])
 
                 // Populate displacements_array
                 displs[0] = 0;
-                for (size_t i = 1; i < chunks; ++i) {
+                for (size_t i = 1; i < (size_t)numtasks; ++i) {
                     displs[i] = displs[i - 1] + chunks_lengths[i - 1];
                 }
 
@@ -287,7 +282,7 @@ int main(int argc, char *argv[])
             // Calculate registers' values
             calc_registers(registers, b, buf, chunks_lengths[taskid]);
 
-            // Reduce registers from all tasks to
+            // Reduce registers from all tasks to root registers
             MPI_Reduce(registers, root_registers, m, MPI_UINT8_T, MPI_MAX, root, MPI_COMM_WORLD);
 
             if (taskid == root) {
