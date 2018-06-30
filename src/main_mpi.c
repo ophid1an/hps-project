@@ -19,15 +19,14 @@ struct result {
     // double time_spent_one_thread;
 };
 
-// static double calc_estimate(uint8_t *registers, size_t m);
-static void print_results(const struct result *res, uint8_t p, uint8_t b,
+static void write_results(const struct result *res, uint8_t p, uint8_t b,
     uint8_t run, uint8_t current_n_tasks, FILE *fptr, uint8_t first_call);
+static void print_results(const struct result *res);
 
 int main(int argc, char *argv[])
 {
     // MPI variables
     const int root = 0;
-
     int numtasks;
     int taskid;
 
@@ -38,21 +37,17 @@ int main(int argc, char *argv[])
     uint8_t b = 14; // Cardinality of registers 2^b , b -> [4..16]
     size_t n = 0; // Number of random integers to generate
     size_t cnt = 0; // Actual distinct count of integers
-    uint32_t runs = 1; // Number of runs
+
     // Mask used for controlling the range of
     // the values of the random integers
     uint32_t mask = 0;
-    uint32_t *buf = NULL;
-    size_t buf_length = 0;
     uint8_t *root_registers = NULL;
 
-    size_t chunks = 0;
     size_t last_chunk_size = 0;
 
     FILE *fptr = NULL;
     uint8_t first_call_to_print = 0;
 
-    // double end = 0.0;
     double begin = 0.0;
 
     struct result res;
@@ -61,9 +56,11 @@ int main(int argc, char *argv[])
 
     // Variables used by all
     size_t m = 0; // Number of registers
+    uint32_t runs = 1; // Number of runs
     uint8_t *registers = NULL;
-    size_t arr_length = 0;
-    uint32_t *arr = NULL;
+    uint32_t *buf = NULL;
+    size_t buf_length = 0;
+    size_t chunks = 0; // Number of chunks
     size_t chunk_size = 0;
 
     // MPI initialization
@@ -107,30 +104,19 @@ int main(int argc, char *argv[])
         }
 
         // Set buffer length equal to the minimum of
-        // the ** half ** specified size and the integer array size
-        buf_length = (1UL << 19) * u / sizeof(uint32_t);
+        // the ceiling(specified size / numtasks)
+        // and the integer array size
+        size_t buf_length_total = (1UL << 20) * u / sizeof(uint32_t);
+        buf_length = buf_length_total / numtasks;
+        if (buf_length_total % numtasks != 0) {
+            ++buf_length;
+        }
         buf_length = MIN(buf_length, n);
-
-        buf = malloc(sizeof *buf * buf_length);
-        if (buf == NULL) {
-            fprintf(stderr, "Fatal: failed to allocate memory.\n");
-            MPI_Finalize();
-            return EXIT_FAILURE;
-        }
-
-        // Calculate maximum length of array for each task
-        // (buf_length / numtasks)
-        arr_length = buf_length / numtasks;
-        if (buf_length % numtasks != 0) {
-            arr_length++;
-        }
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    // Broadcast variables needed by every task
-    MPI_Bcast(&m, 1, MPI_UINT8_T, root, MPI_COMM_WORLD);
-    MPI_Bcast(&arr_length, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+    // Broadcast m and buf_length
+    MPI_Bcast(&m, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+    MPI_Bcast(&buf_length, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
 
     // In each task allocate space for registers
     registers = malloc(sizeof *registers * m);
@@ -140,15 +126,13 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // In each task allocate space for array
-    arr = malloc(sizeof *arr * arr_length);
-    if (arr == NULL) {
+    // In each task allocate space for buffer
+    buf = malloc(sizeof *buf * buf_length);
+    if (buf == NULL) {
         fprintf(stderr, "Fatal: failed to allocate memory.\n");
         MPI_Finalize();
         return EXIT_FAILURE;
     }
-
-    MPI_Barrier(MPI_COMM_WORLD);
 
     if (taskid == root) {
         // Name of file to write results to
@@ -181,11 +165,13 @@ int main(int argc, char *argv[])
         last_chunk_size = n % buf_length;
         chunks = n / buf_length;
         if (last_chunk_size != 0) {
-            chunks++;
+            ++chunks;
         }
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    // Broadcast runs and chunks
+    MPI_Bcast(&runs, 1, MPI_UINT32_T, root, MPI_COMM_WORLD);
+    MPI_Bcast(&chunks, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
 
     for (uint8_t run = 1; run <= runs; ++run) {
         // Zero registers
@@ -198,16 +184,12 @@ int main(int argc, char *argv[])
 
         res.time_spent = 0.0;
 
-        MPI_Barrier(MPI_COMM_WORLD);
-
         if (taskid == root) {
             printf("\nRun %u, using %d task(s).\n", run, numtasks);
 
             srand(seed);
             // uint8_t end_of_buffer = 0;
         }
-
-        MPI_Barrier(MPI_COMM_WORLD);
 
         for (size_t i = 0; i < chunks; ++i) {
             if (taskid == root) {
@@ -222,7 +204,7 @@ int main(int argc, char *argv[])
                 // Fill buffer with random 32bit integers thoughtfully
                 // (only when needed)
                 if (run == 1 || chunks != 1) {
-                    printf("\n Filling buffer... \n");
+                    // printf("\n Filling buffer... \n");
                     for (size_t j = 0; j < chunk_size; ++j) {
                         buf[j] = rand() & mask;
                     }
@@ -231,33 +213,20 @@ int main(int argc, char *argv[])
                 begin = MPI_Wtime();
             }
 
-            MPI_Barrier(MPI_COMM_WORLD);
+            // Scatter the buffer of root to all tasks
+            // Broadcast the buff to all tasks;
+            MPI_Bcast(buf, buf_length, MPI_UINT32_T, root, MPI_COMM_WORLD);
+            // MPI_Scatter(buf, chunk_size, MPI_UINT32_T, arr, chunk_size, MPI_UINT32_T, root, MPI_COMM_WORLD);
+            // MPI_Barrier(MPI_COMM_WORLD);
 
-            printf("\n Broadcasting... \n");
             // Broadcast chunk size
             MPI_Bcast(&chunk_size, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
 
-            printf("\nTaskid: %d Chunk size: %zu", taskid, chunk_size);
-
-            MPI_Barrier(MPI_COMM_WORLD);
-
-            printf("\n Scattering... \n");
-            // Scatter the buffer of root to all tasks
-            MPI_Scatter(buf, chunk_size, MPI_UINT32_T, arr, chunk_size, MPI_UINT32_T, root, MPI_COMM_WORLD);
-
-            MPI_Barrier(MPI_COMM_WORLD);
-
-            printf("\n Calculating... \n");
             // Calculate registers' values
-            calc_registers(registers, b, arr, chunk_size);
+            calc_registers(registers, b, buf, chunk_size, numtasks, taskid);
 
-            MPI_Barrier(MPI_COMM_WORLD);
-
-            printf("\n Reducing... \n");
             // Reduce registers from all tasks to
             MPI_Reduce(registers, root_registers, m, MPI_UINT8_T, MPI_MAX, root, MPI_COMM_WORLD);
-
-            MPI_Barrier(MPI_COMM_WORLD);
 
             if (taskid == root) {
                 res.estimate = calc_estimate(root_registers, m);
@@ -269,13 +238,14 @@ int main(int argc, char *argv[])
                 // }
                 res.perc_error = ABS((cnt - res.estimate) * 100 / cnt);
 
-                print_results(&res, p, b, run, numtasks, fptr, first_call_to_print);
-                first_call_to_print = 0;
+                if (i == chunks - 1) {
+                    print_results(&res);
+                    write_results(&res, p, b, run, numtasks, fptr, first_call_to_print);
+                    first_call_to_print = 0;
+                }
             }
         }
     }
-
-    MPI_Barrier(MPI_COMM_WORLD);
 
     free(registers);
 
@@ -285,15 +255,22 @@ int main(int argc, char *argv[])
         free(buf);
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     return 0;
 }
 
-static void print_results(const struct result *res, uint8_t p, uint8_t b,
+static void write_results(const struct result *res, uint8_t p, uint8_t b,
     uint8_t run, uint8_t current_n_tasks, FILE *fptr, uint8_t first_call)
 {
+    if (first_call == 1) {
+        fprintf(fptr, "Array length,Registers,Run,Tasks,Time,Percent error\n");
+    }
+    fprintf(fptr, "%u,%u,%u,%u,%.*g,%f\n",
+        p, b, run, current_n_tasks, DBL_DIG, res->time_spent, res->perc_error);
+}
 
+static void print_results(const struct result *res)
+{
     printf("Estimate: %f\n", res->estimate);
     printf("Percent error: %.3f\n", res->perc_error);
     printf("Time in seconds: %.3f\n", res->time_spent);
@@ -301,8 +278,4 @@ static void print_results(const struct result *res, uint8_t p, uint8_t b,
     // double efficiency = speedup / current_n_tasks;
     // printf("Speedup: %.3f\n", speedup);
     // printf("Efficiency: %.3f\n", efficiency);
-    if (first_call == 1) {
-        fprintf(fptr, "Array length,Registers,Run,Tasks,Time,Percent error\n");
-    }
-    fprintf(fptr, "%u,%u,%u,%u,%.*g,%f\n", p, b, run, current_n_tasks, DBL_DIG, res->time_spent, res->perc_error);
 }
