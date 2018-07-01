@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 
     // Name of file to write results to
     static char filename[80];
-    snprintf(filename, 80, "results_omp-p%u-b%u.csv", p, b);
+    snprintf(filename, 80, "results_omp-p%u-b%u-t%u.csv", p, b, fixed_threads);
 
     FILE *fptr = fopen(filename, "w");
     if (fptr == NULL) {
