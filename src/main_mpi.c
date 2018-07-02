@@ -274,13 +274,15 @@ int main(int argc, char *argv[])
                 for (size_t i = 1; i < (size_t)numtasks; ++i) {
                     displs[i] = displs[i - 1] + chunks_lengths[i - 1];
                 }
-
-                begin = MPI_Wtime();
             }
 
             // Scatter the root buffer to all tasks
             MPI_Scatterv(root_buf, chunks_lengths, displs, MPI_UINT32_T, buf, chunks_lengths[taskid], MPI_UINT32_T, root, MPI_COMM_WORLD);
 
+            if (taskid == root) {
+                begin = MPI_Wtime();
+            }
+            
             // Calculate registers' values
             calc_registers(registers, b, buf, chunks_lengths[taskid]);
 
