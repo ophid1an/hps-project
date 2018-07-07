@@ -18,7 +18,7 @@ The count of distinct numbers has been precalculated for **p** = 0 up to 30.
 ## Results 
 AMD FX-8350 4.0GHz / Xubuntu 16.04 64bit / gcc 5.4.0 (with -O3 optimizations)
 
-Options used: **p** = [26..30], **b** = 14, **r** = 20
+Options used: **p** = [26..30], **b** = 14, **u** = 4096, **r** = 20
 
 Time values were calculated as the interquartile mean (IQM) of the timings taken from 20 runs for each array length.
 
